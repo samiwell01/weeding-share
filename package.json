@@ -1,0 +1,11 @@
+{
+  "name": "wedding-share",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c blue,green \"npm --prefix frontend run dev -- --host 0.0.0.0\" \"npm --prefix backend run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
