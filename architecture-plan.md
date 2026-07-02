@@ -14,15 +14,24 @@ Construire un MVP fonctionnel permettant de :
 
 ## 2. Architecture cible
 
+### Modèle unifié
+- Un seul service Node.js sur Render
+- Backend Express sert les APIs
+- Backend Express sert le frontend compilé
+- Une seule URL pour les utilisateurs
+
 ### Frontend
 - React + Vite
 - Interface simple, responsive et pensée mobile first
-- PWA possible pour une expérience proche d'une app native
+- Compilé vers `/frontend/dist` au build
+- Servi en tant que fichiers statiques par le backend
 
 ### Backend
 - Node.js + Express
 - API REST pour la logique métier
-- Gestion des uploads et liaison avec la base de données
+- Gestion des uploads
+- Liaison avec la base de données
+- Sert aussi les fichiers statiques du frontend
 
 ### Base de données
 - Supabase PostgreSQL
