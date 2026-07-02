@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const multer = require('multer');
+const path = require('path');
 
 dotenv.config();
 
@@ -11,6 +12,10 @@ const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
+
+// Servir les fichiers statiques du frontend
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
 
 const events = [{ id: 'event-1', name: 'Wedding 2026', accessCode: 'MARIAGE2026' }];
 const guests = [{ id: 'guest-1', eventId: 'event-1', firstName: 'Jean', lastName: 'Rakoto' }];
@@ -92,4 +97,9 @@ app.get('/guest/:id/media', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Backend running on http://localhost:${PORT}`);
+});
+
+// Fallback pour le routing frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
