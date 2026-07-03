@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AppProvider } from './AppContext';
+import { AppProvider, useApp } from './AppContext';
 import Navigation from './components/Navigation';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -12,7 +12,14 @@ import GuestOnboardingPage from './pages/GuestOnboardingPage';
 import GuestHomePage from './pages/GuestHomePage';
 import UploadPage from './pages/UploadPage';
 import MyMediaPage from './pages/MyMediaPage';
-import JoinPage from './pages/JoinPage';
+import UserProfilePage from './pages/UserProfilePage';
+import LoadingOverlay from './components/LoadingOverlay';
+
+function HomeRedirect() {
+  const { authUser, loading } = useApp();
+  if (loading) return <LoadingOverlay message="Connexion en cours…" />;
+  return authUser ? <Navigate to="/guest/home" replace /> : <Navigate to="/admin" replace />;
+}
 
 function App() {
   return (
@@ -22,10 +29,9 @@ function App() {
           <Navigation />
           <main>
             <Routes>
-              {/* Auth */}
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-              {/* Admin */}
+              {/* Single login for everyone */}
               <Route path="/admin" element={<AdminLoginPage />} />
               <Route path="/admin/setup" element={<AdminSetupPage />} />
               <Route path="/admin/wedding" element={<WeddingInfoPage />} />
@@ -33,17 +39,20 @@ function App() {
               <Route path="/admin/guests" element={<GuestsPage />} />
               <Route path="/admin/guest/:id" element={<GuestDetailPage />} />
 
-              {/* Guest invite flow */}
+              {/* Guest invite flow via QR/link */}
               <Route path="/join/:code" element={<GuestOnboardingPage />} />
 
-              {/* Guest app */}
+              {/* Main app (default after login) */}
               <Route path="/guest/home" element={<GuestHomePage />} />
               <Route path="/guest/upload" element={<UploadPage />} />
               <Route path="/guest/media" element={<MyMediaPage />} />
 
-              {/* Legacy */}
-              <Route path="/" element={<JoinPage />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Profile */}
+              <Route path="/profile" element={<UserProfilePage />} />
+
+              {/* Default redirect */}
+              <Route path="/" element={<HomeRedirect />} />
+              <Route path="*" element={<HomeRedirect />} />
             </Routes>
           </main>
         </div>

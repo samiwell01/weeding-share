@@ -3,19 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
 
 export default function AdminLoginPage() {
-  const { authUser, signIn, signUp, loadAdminWedding } = useApp();
+  const { authUser, signIn, signUp } = useApp();
   const navigate = useNavigate();
-  const [mode, setMode] = useState('login'); // login | register
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authUser) return;
-    loadAdminWedding(authUser.id).then((event) => {
-      navigate(event ? '/admin/wedding' : '/admin/setup');
-    });
+    // If already logged in, go to home
+    if (authUser) navigate('/guest/home');
   }, [authUser]);
 
   const handleSubmit = async (e) => {
@@ -28,11 +26,12 @@ export default function AdminLoginPage() {
     setLoading(false);
     if (!result.success) { setError(result.error); return; }
     if (mode === 'register') {
-      setError('');
       setMode('login');
       setPassword('');
       setError('Compte créé ! Connectez-vous maintenant.');
+      return;
     }
+    navigate('/guest/home');
   };
 
   return (
@@ -41,32 +40,17 @@ export default function AdminLoginPage() {
         <div className="auth-logo">💍</div>
         <h1>Wedding Share</h1>
         <p className="auth-subtitle">
-          {mode === 'login' ? 'Espace mariés — connectez-vous' : 'Créer un compte mariés'}
+          {mode === 'login' ? 'Connectez-vous à votre compte' : 'Créer un nouveau compte'}
         </p>
         <form onSubmit={handleSubmit}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {error && <p className="message error">{error}</p>}
           <button type="submit" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'Se connecter' : 'Créer le compte'}
           </button>
         </form>
-        <button
-          className="btn-switch"
-          onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
-        >
+        <button className="btn-switch" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
           {mode === 'login' ? 'Pas encore de compte ? Créer un compte' : 'Déjà un compte ? Se connecter'}
         </button>
       </div>

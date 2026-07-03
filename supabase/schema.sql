@@ -1,5 +1,14 @@
 -- Schema Wedding Share v2
 -- Run this in Supabase SQL Editor (Dashboard > SQL Editor > New query)
+-- If upgrading from v1, run this migration first:
+-- ALTER TABLE guests ADD COLUMN IF NOT EXISTS avatar_url text;
+-- ALTER TABLE guests ADD COLUMN IF NOT EXISTS auth_user_id uuid;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS admin_id uuid;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS date date;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS time time;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_name text;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_address text;
+-- ALTER TABLE events ADD COLUMN IF NOT EXISTS cover_url text;
 
 create extension if not exists "pgcrypto";
 
@@ -27,6 +36,7 @@ create table if not exists guests (
   email        text,
   phone        text,
   relation     text,                                    -- ex: ami, famille, collègue
+  avatar_url   text,                                    -- profile picture URL
   role         text not null default 'guest',
   is_admin     boolean not null default false,
   created_at   timestamptz not null default now()

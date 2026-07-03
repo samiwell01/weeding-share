@@ -4,10 +4,10 @@ import { useApp } from '../AppContext';
 
 export default function GuestOnboardingPage() {
   const { code } = useParams();
-  const { authUser, signIn, signUp, joinEvent, guest } = useApp();
+  const { authUser, signIn, signUp, joinEvent, guestEvents, setGuest, setEvent, userProfile } = useApp();
   const navigate = useNavigate();
-  const [step, setStep] = useState('login'); // login | form | loading
-  const [authMode, setAuthMode] = useState('login'); // login | register
+  const [step, setStep] = useState('loading'); // loading | login | form
+  const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', relation: '' });
@@ -15,12 +15,26 @@ export default function GuestOnboardingPage() {
   const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
-    if (guest) { navigate('/guest/home'); return; }
-    if (authUser && step === 'login') {
-      setForm((f) => ({ ...f }));
-      setStep('form');
+    if (!authUser) { setStep('login'); return; }
+
+    // Already joined this event → go directly to home
+    const existing = guestEvents.find((e) => e.event?.accessCode === code?.toUpperCase());
+    if (existing) {
+      setGuest(existing.guest);
+      setEvent(existing.event);
+      navigate('/guest/home');
+      return;
     }
-  }, [authUser, guest]);
+
+    // Pre-fill from existing profile
+    setForm({
+      firstName: userProfile?.firstName || '',
+      lastName: userProfile?.lastName || '',
+      phone: userProfile?.phone || '',
+      relation: '',
+    });
+    setStep('form');
+  }, [authUser, guestEvents]);
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -37,23 +51,19 @@ export default function GuestOnboardingPage() {
       setAuthMode('login');
       setPassword('');
       setError('Compte créé ! Connectez-vous maintenant.');
-      return;
     }
-    setStep('form');
   };
 
   const handleJoin = async (e) => {
     e.preventDefault();
     if (!form.firstName || !form.lastName) { setError('Prénom et nom sont requis.'); return; }
     setStep('loading');
-    const result = await joinEvent({ code, ...form });
+    const result = await joinEvent({ code: code.toUpperCase(), ...form });
     if (!result.success) { setError(result.error); setStep('form'); return; }
     navigate('/guest/home');
   };
 
-  if (step === 'loading') {
-    return <div className="auth-page"><p>Connexion en cours...</p></div>;
-  }
+  if (step === 'loading') return <div className="auth-page"><p>Chargement...</p></div>;
 
   if (step === 'login') {
     return (
@@ -87,15 +97,9 @@ export default function GuestOnboardingPage() {
         <h2>Quelques infos avant de commencer</h2>
         <p className="auth-subtitle">Ces informations aideront les mariés à vous identifier</p>
         <form onSubmit={handleJoin}>
-          <label>Prénom *
-            <input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required />
-          </label>
-          <label>Nom *
-            <input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required />
-          </label>
-          <label>Téléphone
-            <input value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" />
-          </label>
+          <label>Prénom *<input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required /></label>
+          <label>Nom *<input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required /></label>
+          <label>Téléphone<input value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" /></label>
           <label>Vous êtes...
             <select value={form.relation} onChange={setField('relation')}>
               <option value="">Sélectionner</option>

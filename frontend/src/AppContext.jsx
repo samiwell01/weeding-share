@@ -8,7 +8,8 @@ export function AppProvider({ children }) {
   const [authUser, setAuthUser] = useState(null);
   const [guest, setGuest] = useState(null);
   const [event, setEvent] = useState(null);
-  const [guestEvents, setGuestEvents] = useState([]); // all events the authUser joined
+  const [guestEvents, setGuestEvents] = useState([]);
+  const [userProfile, setUserProfile] = useState(null); // { firstName, lastName, email, phone, avatarUrl }
   const [media, setMedia] = useState([]);
   const [guests, setGuests] = useState([]);
   const [selectedGuestMedia, setSelectedGuestMedia] = useState([]);
@@ -28,6 +29,14 @@ export function AppProvider({ children }) {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load profile + guest events when authUser changes
+  useEffect(() => {
+    if (authUser) {
+      loadGuestEvents(authUser.id);
+      loadUserProfile(authUser.id);
+    }
+  }, [authUser]);
 
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -49,6 +58,36 @@ export function AppProvider({ children }) {
     setEvent(null);
     setMedia([]);
     setGuestEvents([]);
+    setUserProfile(null);
+  };
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  };
+
+  // ─── USER PROFILE ──────────────────────────────────────────────────────────
+
+  const loadUserProfile = async (authUserId) => {
+    if (!authUserId) return;
+    const res = await fetch(`${API_URL}/user/profile/${authUserId}`);
+    const data = await res.json();
+    if (data.profile) setUserProfile(data.profile);
+    return data.profile || null;
+  };
+
+  const updateUserProfile = async (fields) => {
+    if (!authUser) return { success: false };
+    const res = await fetch(`${API_URL}/user/profile/${authUser.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    });
+    const data = await res.json();
+    if (!res.ok) return { success: false, error: data.error };
+    setUserProfile((p) => ({ ...p, ...fields }));
+    return { success: true };
   };
 
   // ─── ADMIN WEDDING ─────────────────────────────────────────────────────────
@@ -71,11 +110,19 @@ export function AppProvider({ children }) {
     const res = await fetch(`${API_URL}/admin/wedding`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminId: authUser.id, ...fields }),
+      body: JSON.stringify({
+        adminId: authUser.id,
+        hostFirstName: userProfile?.firstName,
+        hostLastName: userProfile?.lastName,
+        hostEmail: authUser.email,
+        hostPhone: userProfile?.phone,
+        ...fields,
+      }),
     });
     const data = await res.json();
     if (!res.ok) return { success: false, error: data.error, event: data.event };
     setEvent(data.event);
+    await loadGuestEvents(authUser.id);
     return { success: true, event: data.event };
   };
 
@@ -94,7 +141,7 @@ export function AppProvider({ children }) {
   // ─── GUEST EVENTS ──────────────────────────────────────────────────────────
 
   const loadGuestEvents = async (authUserId) => {
-    if (!authUserId) return;
+    if (!authUserId) return [];
     const res = await fetch(`${API_URL}/guest/events/${authUserId}`);
     const data = await res.json();
     setGuestEvents(data.entries || []);
@@ -123,6 +170,11 @@ export function AppProvider({ children }) {
     await loadMyMedia(data.guest.id);
     await loadGuestEvents(authUser.id);
     return { success: true, guest: data.guest, event: data.event };
+  };
+
+  // Check if authUser already joined a specific event by code
+  const checkAlreadyJoined = (code) => {
+    return guestEvents.find((e) => e.event?.accessCode === code) || null;
   };
 
   // ─── MEDIA ─────────────────────────────────────────────────────────────────
@@ -179,16 +231,16 @@ export function AppProvider({ children }) {
     setSelectedGuestMedia(data.media || []);
   };
 
-  useEffect(() => { loadGuests(); }, []);
-
   return (
     <AppContext.Provider value={{
       authUser, guest, setGuest, event, setEvent,
-      guestEvents, media, guests, selectedGuestMedia,
+      guestEvents, userProfile, media, guests, selectedGuestMedia,
       eventStats, message, setMessage, loading,
-      signUp, signIn, signOut,
+      signUp, signIn, signOut, updatePassword,
+      loadUserProfile, updateUserProfile,
       loadAdminWedding, loadEventStats, createWedding, updateWedding,
-      loadGuestEvents, joinEvent, loadMyMedia, uploadMedia, deleteMedia,
+      loadGuestEvents, joinEvent, checkAlreadyJoined,
+      loadMyMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia,
     }}>
       {children}

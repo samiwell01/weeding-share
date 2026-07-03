@@ -48,6 +48,7 @@ function mapGuest(g) {
     email: g.email,
     phone: g.phone,
     relation: g.relation,
+    avatarUrl: g.avatar_url || null,
     role: g.role,
     isAdmin: g.is_admin,
     createdAt: g.created_at,
@@ -141,8 +142,9 @@ async function createGuest(eventId, fields) {
       email: fields.email || null,
       phone: fields.phone || null,
       relation: fields.relation || null,
-      role: 'guest',
-      is_admin: false,
+      avatar_url: fields.avatarUrl || null,
+      role: fields.role || 'guest',
+      is_admin: Boolean(fields.isAdmin),
     }])
     .select()
     .single();
@@ -165,10 +167,25 @@ async function getOrCreateGuestByAuth(eventId, authUserId, fields) {
   return { guest, isNew: true };
 }
 
+async function getSignedFileUrl(storagePath) {
+  const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+  const { data, error } = await supabase.storage.from(bucketName).createSignedUrl(storagePath, TEN_YEARS);
+  if (error || !data?.signedURL) {
+    console.error('signed url helper error', error, data);
+    return null;
+  }
+  return data.signedURL;
+}
+
 async function getGuestMedia(guestId) {
   const { data, error } = await supabase.from('media').select('*').eq('guest_id', guestId).order('created_at', { ascending: false });
   if (error) return [];
-  return data.map(mapMedia);
+  const items = data.map(mapMedia);
+  return Promise.all(items.map(async (item) => {
+    if (!item.fileUrl || item.fileUrl.startsWith('http')) return item;
+    const signed = await getSignedFileUrl(item.fileUrl);
+    return { ...item, fileUrl: signed || item.fileUrl };
+  }));
 }
 
 async function getAllGuests(eventId) {
@@ -212,15 +229,23 @@ app.get('/admin/wedding', async (req, res) => {
 });
 
 app.post('/admin/wedding', async (req, res) => {
-  const { adminId, name, date, time, venueName, venueAddress, coverUrl } = req.body;
+  const { adminId, name, date, time, venueName, venueAddress, coverUrl, hostFirstName, hostLastName, hostEmail, hostPhone } = req.body;
   if (!adminId || !name) return res.status(400).json({ error: 'adminId et name sont requis.' });
-
-  // Check if admin already has a wedding
-  const existing = await getEventByAdminId(adminId);
-  if (existing) return res.status(409).json({ error: 'Un mariage existe déjà pour cet admin.', event: existing });
 
   try {
     const event = await createEvent(adminId, { name, date, time, venueName, venueAddress, coverUrl });
+    if (hostFirstName && hostLastName) {
+      await createGuest(event.id, {
+        authUserId: adminId,
+        firstName: hostFirstName,
+        lastName: hostLastName,
+        email: hostEmail || null,
+        phone: hostPhone || null,
+        relation: 'hôte',
+        role: 'admin',
+        isAdmin: true,
+      });
+    }
     return res.status(201).json({ event });
   } catch (err) {
     console.error('create wedding error', err);
@@ -333,6 +358,42 @@ app.delete('/media/:id', async (req, res) => {
   return res.json({ removed: deleted });
 });
 
+// User profile (stored in guests table aggregated or a profiles table)
+// We use a simple profiles approach via supabase auth metadata
+app.get('/user/profile/:authUserId', async (req, res) => {
+  const { data, error } = await supabase
+    .from('guests')
+    .select('first_name, last_name, email, phone, avatar_url')
+    .eq('auth_user_id', req.params.authUserId)
+    .limit(1)
+    .single();
+  if (error || !data) return res.json({ profile: null });
+  return res.json({
+    profile: {
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.phone,
+      avatarUrl: data.avatar_url,
+    },
+  });
+});
+
+app.put('/user/profile/:authUserId', async (req, res) => {
+  const { firstName, lastName, phone, avatarUrl } = req.body;
+  const { error } = await supabase
+    .from('guests')
+    .update({
+      first_name: firstName,
+      last_name: lastName,
+      phone: phone || null,
+      avatar_url: avatarUrl || null,
+    })
+    .eq('auth_user_id', req.params.authUserId);
+  if (error) return res.status(500).json({ error: error.message });
+  return res.json({ success: true });
+});
+
 // Admin stats
 app.get('/admin/stats/:eventId', async (req, res) => {
   const { data, error } = await supabase
@@ -346,19 +407,35 @@ app.get('/admin/stats/:eventId', async (req, res) => {
   return res.json({ photos, videos, audios, total: data.length });
 });
 
-// Guest: list all events joined by authUserId
+// Guest: list all events joined by authUserId and hosted by authUserId
 app.get('/guest/events/:authUserId', async (req, res) => {
-  const { data, error } = await supabase
+  const authUserId = req.params.authUserId;
+  const { data: guestData, error: guestError } = await supabase
     .from('guests')
     .select('*, events(*)')
-    .eq('auth_user_id', req.params.authUserId)
+    .eq('auth_user_id', authUserId)
     .order('created_at', { ascending: false });
-  if (error) return res.status(500).json({ error: error.message });
-  const result = (data || []).map((g) => ({
+  if (guestError) return res.status(500).json({ error: guestError.message });
+
+  const guestEntries = (guestData || []).map((g) => ({
     guest: mapGuest(g),
     event: mapEvent(g.events),
+    isHost: false,
   }));
-  return res.json({ entries: result });
+
+  const { data: hostData, error: hostError } = await supabase
+    .from('events')
+    .select('*')
+    .eq('admin_id', authUserId)
+    .order('created_at', { ascending: false });
+  if (hostError) return res.status(500).json({ error: hostError.message });
+
+  const joinedIds = new Set(guestEntries.map((entry) => entry.event?.id));
+  const hostEntries = (hostData || [])
+    .filter((e) => !joinedIds.has(e.id))
+    .map((e) => ({ guest: null, event: mapEvent(e), isHost: true }));
+
+  return res.json({ entries: [...hostEntries, ...guestEntries] });
 });
 
 app.get('/guests', async (req, res) => {

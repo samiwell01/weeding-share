@@ -411,12 +411,12 @@ button.button { background: #ec4899; color: white; border: none; cursor: pointer
 .event-card-info strong { font-size: 1rem; color: #111827; }
 .event-card-info span { font-size: 0.8rem; color: #6b7280; }
 
-.event-card-actions { display: flex; gap: 8px; }
+.event-card-actions { display: flex; gap: 8px; align-items: center; }
 
 .btn-small {
-  padding: 6px 10px;
-  font-size: 0.78rem;
-  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  border-radius: 10px;
   background: #ec4899;
   color: white;
   border: none;
@@ -426,6 +426,123 @@ button.button { background: #ec4899; color: white; border: none; cursor: pointer
   background: #f3f4f6;
   color: #374151;
   border: 1px solid #d1d5db;
+}
+
+.event-card-cover {
+  width: 120px;
+  height: 100px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  margin-right: 16px;
+  flex-shrink: 0;
+  border: 1px solid #e5e7eb;
+}
+
+.event-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.event-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.event-badge.host { background: #fde68a; color: #92400e; }
+.event-badge.guest { background: #dbeafe; color: #1d4ed8; }
+
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 500;
+}
+
+.loading-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 22px;
+  padding: 28px 36px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.18);
+}
+
+.loading-spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 5px solid rgba(236, 72, 153, 0.16);
+  border-top-color: #ec4899;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.profile-avatar-img, .profile-avatar-initials, .guest-avatar-img, .guest-avatar-initials {
+  width: 80px;
+  height: 80px;
+  border-radius: 22px;
+  object-fit: cover;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111827;
+  font-weight: 700;
+}
+
+.profile-avatar-initials, .guest-avatar-initials {
+  font-size: 1.8rem;
+}
+
+.guest-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  color: #111827;
+  text-decoration: none;
+}
+
+.guest-card:hover { background: #f9fafb; }
+
+.guest-card-info strong { display: block; font-size: 1rem; margin-bottom: 4px; }
+.guest-card-info span { display: block; font-size: 0.85rem; color: #6b7280; }
+
+.guest-relation-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.guests-grid {
+  display: grid;
+  gap: 12px;
 }
 
 /* ─── MODAL ──────────────────────────────────────────────────────────────── */
@@ -588,3 +705,102 @@ button.button { background: #ec4899; color: white; border: none; cursor: pointer
 
 .clickable { cursor: pointer; }
 .clickable:hover { opacity: 0.85; }
+
+/* ─── AVATAR ──────────────────────────────────────────────────────────────────── */
+
+.profile-avatar-initials,
+.guest-avatar-initials,
+.nav-avatar-initials {
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ec4899, #f97316);
+  color: white;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-avatar-img,
+.guest-avatar-img,
+.nav-avatar-img {
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.guest-avatar-initials,
+.guest-avatar-img { width: 48px; height: 48px; font-size: 1.1rem; }
+
+.nav-avatar-initials,
+.nav-avatar-img { width: 32px; height: 32px; font-size: 0.75rem; }
+
+.nav-profile-link {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 50%;
+  border: 2px solid #ec4899;
+  text-decoration: none;
+}
+
+/* ─── PROFILE PAGE ────────────────────────────────────────────────────────────── */
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.profile-avatar-initials {
+  width: 80px;
+  height: 80px;
+  font-size: 1.8rem;
+}
+
+.profile-avatar-img {
+  width: 80px;
+  height: 80px;
+}
+
+/* ─── GUESTS GRID ────────────────────────────────────────────────────────────── */
+
+.guests-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.guest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fafafa;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s;
+}
+.guest-card:hover { background: #fdf2f8; }
+
+.guest-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.guest-card-info strong { font-size: 0.95rem; color: #111827; }
+.guest-card-info span { font-size: 0.78rem; color: #6b7280; }
+
+.guest-relation-badge {
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}

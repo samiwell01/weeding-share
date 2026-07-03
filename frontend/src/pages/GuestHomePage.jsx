@@ -4,7 +4,7 @@ import { useApp } from '../AppContext';
 
 export default function GuestHomePage() {
   const navigate = useNavigate();
-  const { authUser, guest, setGuest, setEvent, guestEvents, loadGuestEvents, joinEvent } = useApp();
+  const { authUser, setGuest, setEvent, guestEvents, loadGuestEvents, joinEvent, userProfile } = useApp();
   const [showJoin, setShowJoin] = useState(false);
   const [joinStep, setJoinStep] = useState('code'); // code | form
   const [code, setCode] = useState('');
@@ -16,6 +16,16 @@ export default function GuestHomePage() {
     if (!authUser) { navigate('/'); return; }
     loadGuestEvents(authUser.id);
   }, [authUser]);
+
+  useEffect(() => {
+    if (!userProfile) return;
+    setForm((f) => ({
+      ...f,
+      firstName: userProfile.firstName || f.firstName,
+      lastName: userProfile.lastName || f.lastName,
+      phone: userProfile.phone || f.phone,
+    }));
+  }, [userProfile]);
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -35,14 +45,19 @@ export default function GuestHomePage() {
     if (!result.success) { setError(result.error); return; }
     setShowJoin(false);
     setCode('');
-    setForm({ firstName: '', lastName: '', phone: '', relation: '' });
+    setForm({ firstName: userProfile?.firstName || '', lastName: userProfile?.lastName || '', phone: userProfile?.phone || '', relation: '' });
     setJoinStep('code');
   };
 
   const openEvent = (entry) => {
-    setGuest(entry.guest);
+    if (entry.guest) {
+      setGuest(entry.guest);
+      setEvent(entry.event);
+      navigate('/guest/media');
+      return;
+    }
     setEvent(entry.event);
-    navigate('/guest/media');
+    navigate('/admin/dashboard');
   };
 
   if (!authUser) return null;
@@ -56,19 +71,33 @@ export default function GuestHomePage() {
       ) : (
         <div className="event-list">
           {guestEvents.map((entry) => (
-            <div key={entry.guest.id} className="event-card" onClick={() => openEvent(entry)}>
+            <div key={entry.event.id} className="event-card" onClick={() => openEvent(entry)}>
+              <div className="event-card-cover" style={{ backgroundImage: `url(${entry.event.coverUrl || 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=70'})` }} />
               <div className="event-card-info">
-                <strong>{entry.event?.name || 'Mariage'}</strong>
+                <div className="event-card-top">
+                  <strong>{entry.event?.name || 'Mariage'}</strong>
+                  <span className={`event-badge ${entry.isHost || entry.guest?.isAdmin ? 'host' : 'guest'}`}>
+                    {entry.isHost || entry.guest?.isAdmin ? 'Organisateur' : 'Invité'}
+                  </span>
+                </div>
                 {entry.event?.date && <span>{new Date(entry.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
                 {entry.event?.venueName && <span>{entry.event.venueName}</span>}
               </div>
               <div className="event-card-actions">
-                <button onClick={(e) => { e.stopPropagation(); setGuest(entry.guest); setEvent(entry.event); navigate('/guest/upload'); }} className="btn-small">
-                  📤 Ajouter
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small btn-secondary">
-                  🖼 Voir
-                </button>
+                {entry.guest ? (
+                  <>
+                    <button onClick={(e) => { e.stopPropagation(); setGuest(entry.guest); setEvent(entry.event); navigate('/guest/upload'); }} className="btn-small">
+                      📤 Ajouter
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small btn-secondary">
+                      🖼 Voir
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small">
+                    Gérer l'événement
+                  </button>
+                )}
               </div>
             </div>
           ))}
