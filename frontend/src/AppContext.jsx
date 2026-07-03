@@ -8,9 +8,11 @@ export function AppProvider({ children }) {
   const [authUser, setAuthUser] = useState(null);
   const [guest, setGuest] = useState(null);
   const [event, setEvent] = useState(null);
+  const [guestEvents, setGuestEvents] = useState([]); // all events the authUser joined
   const [media, setMedia] = useState([]);
   const [guests, setGuests] = useState([]);
   const [selectedGuestMedia, setSelectedGuestMedia] = useState([]);
+  const [eventStats, setEventStats] = useState({ photos: 0, videos: 0, audios: 0, total: 0 });
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +48,7 @@ export function AppProvider({ children }) {
     setGuest(null);
     setEvent(null);
     setMedia([]);
+    setGuestEvents([]);
   };
 
   // ─── ADMIN WEDDING ─────────────────────────────────────────────────────────
@@ -55,6 +58,13 @@ export function AppProvider({ children }) {
     const data = await res.json();
     if (data.event) setEvent(data.event);
     return data.event || null;
+  };
+
+  const loadEventStats = async (eventId) => {
+    if (!eventId) return;
+    const res = await fetch(`${API_URL}/admin/stats/${eventId}`);
+    const data = await res.json();
+    setEventStats(data);
   };
 
   const createWedding = async (fields) => {
@@ -81,7 +91,15 @@ export function AppProvider({ children }) {
     return { success: true, event: data.event };
   };
 
-  // ─── GUEST JOIN ────────────────────────────────────────────────────────────
+  // ─── GUEST EVENTS ──────────────────────────────────────────────────────────
+
+  const loadGuestEvents = async (authUserId) => {
+    if (!authUserId) return;
+    const res = await fetch(`${API_URL}/guest/events/${authUserId}`);
+    const data = await res.json();
+    setGuestEvents(data.entries || []);
+    return data.entries || [];
+  };
 
   const joinEvent = async ({ code, firstName, lastName, phone, relation }) => {
     if (!authUser) return { success: false, error: 'Non connecté' };
@@ -103,6 +121,7 @@ export function AppProvider({ children }) {
     setGuest(data.guest);
     setEvent(data.event);
     await loadMyMedia(data.guest.id);
+    await loadGuestEvents(authUser.id);
     return { success: true, guest: data.guest, event: data.event };
   };
 
@@ -165,11 +184,11 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       authUser, guest, setGuest, event, setEvent,
-      media, guests, selectedGuestMedia,
-      message, setMessage, loading,
+      guestEvents, media, guests, selectedGuestMedia,
+      eventStats, message, setMessage, loading,
       signUp, signIn, signOut,
-      loadAdminWedding, createWedding, updateWedding,
-      joinEvent, loadMyMedia, uploadMedia, deleteMedia,
+      loadAdminWedding, loadEventStats, createWedding, updateWedding,
+      loadGuestEvents, joinEvent, loadMyMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia,
     }}>
       {children}

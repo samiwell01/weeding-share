@@ -333,6 +333,34 @@ app.delete('/media/:id', async (req, res) => {
   return res.json({ removed: deleted });
 });
 
+// Admin stats
+app.get('/admin/stats/:eventId', async (req, res) => {
+  const { data, error } = await supabase
+    .from('media')
+    .select('type')
+    .eq('event_id', req.params.eventId);
+  if (error) return res.status(500).json({ error: error.message });
+  const photos = data.filter((m) => m.type === 'photo').length;
+  const videos = data.filter((m) => m.type === 'video').length;
+  const audios = data.filter((m) => m.type === 'audio').length;
+  return res.json({ photos, videos, audios, total: data.length });
+});
+
+// Guest: list all events joined by authUserId
+app.get('/guest/events/:authUserId', async (req, res) => {
+  const { data, error } = await supabase
+    .from('guests')
+    .select('*, events(*)')
+    .eq('auth_user_id', req.params.authUserId)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(500).json({ error: error.message });
+  const result = (data || []).map((g) => ({
+    guest: mapGuest(g),
+    event: mapEvent(g.events),
+  }));
+  return res.json({ entries: result });
+});
+
 app.get('/guests', async (req, res) => {
   const { eventId } = req.query;
   const list = await getAllGuests(eventId);

@@ -1,36 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
-
-function MediaPreview({ item }) {
-  if (item.type === 'photo') {
-    return <img src={item.fileUrl} alt={item.fileName} className="media-preview-img" />;
-  }
-  if (item.type === 'video') {
-    return <video src={item.fileUrl} controls className="media-preview-img" />;
-  }
-  if (item.type === 'audio') {
-    return <audio src={item.fileUrl} controls className="media-preview-audio" />;
-  }
-  return <span>{item.fileName}</span>;
-}
+import Lightbox from '../components/Lightbox';
 
 export default function GuestDetailPage() {
   const { id } = useParams();
   const { guests, selectedGuestMedia, loadGuestMedia } = useApp();
   const guest = guests.find((item) => item.id === id);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
-  useEffect(() => {
-    if (id) {
-      loadGuestMedia(id);
-    }
-  }, [id]);
+  const viewable = selectedGuestMedia.filter((m) => m.type === 'photo' || m.type === 'video');
+
+  useEffect(() => { if (id) loadGuestMedia(id); }, [id]);
 
   if (!guest) {
     return (
       <div className="card">
         <h2>Invité introuvable</h2>
-        <Link to="/admin/guests" className="button">Retour à la liste</Link>
+        <Link to="/admin/guests" className="button">Retour</Link>
       </div>
     );
   }
@@ -42,17 +29,46 @@ export default function GuestDetailPage() {
         <p>Aucun média envoyé par cet invité.</p>
       ) : (
         <div className="media-grid">
-          {selectedGuestMedia.map((item) => (
-            <div key={item.id} className="media-card">
-              <MediaPreview item={item} />
-              <div className="media-card-footer">
-                <span className="media-card-name">{item.fileName}</span>
+          {selectedGuestMedia.map((item) => {
+            const viewIndex = viewable.findIndex((v) => v.id === item.id);
+            return (
+              <div key={item.id} className="media-card">
+                {item.type === 'photo' && (
+                  <img
+                    src={item.fileUrl}
+                    alt={item.fileName}
+                    className="media-preview-img clickable"
+                    onClick={() => setLightboxIndex(viewIndex)}
+                  />
+                )}
+                {item.type === 'video' && (
+                  <div className="media-video-thumb clickable" onClick={() => setLightboxIndex(viewIndex)}>
+                    <video src={item.fileUrl} className="media-preview-img" />
+                    <span className="play-icon">▶</span>
+                  </div>
+                )}
+                {item.type === 'audio' && (
+                  <audio src={item.fileUrl} controls className="media-preview-audio" />
+                )}
+                <div className="media-card-footer">
+                  <span className="media-card-name">{item.fileName}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
-      <Link to="/admin/guests" className="button">Retour à la liste</Link>
+      <Link to="/admin/guests" className="button">Retour</Link>
+
+      {lightboxIndex !== null && (
+        <Lightbox
+          items={viewable}
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onPrev={() => setLightboxIndex((i) => Math.max(0, i - 1))}
+          onNext={() => setLightboxIndex((i) => Math.min(viewable.length - 1, i + 1))}
+        />
+      )}
     </div>
   );
 }
