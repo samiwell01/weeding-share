@@ -14,13 +14,21 @@ export default function UploadPage() {
   const { id: eventId } = useParams();
   const navigate = useNavigate();
   const {
-    authUser, guest, setGuest, event, loadEventById,
-    guestEvents, loadGuests, joinEvent, uploadMedia,
-    message, setMessage, userProfile,
+    authUser,
+    guest,
+    setGuest,
+    event,
+    loadEventById,
+    guestEvents,
+    loadGuests,
+    joinEvent,
+    uploadMedia,
+    message,
+    setMessage,
+    userProfile,
   } = useApp();
 
   const [selectedFiles, setSelectedFiles] = useState([]);
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [type, setType] = useState('photo');
   const [tabIndex, setTabIndex] = useState(0);
   const [uploadError, setUploadError] = useState('');
@@ -31,33 +39,59 @@ export default function UploadPage() {
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recordedAudioUrl, setRecordedAudioUrl] = useState('');
   const [seconds, setSeconds] = useState(0);
+  const [description, setDescription] = useState('');
   const timerRef = useRef(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!authUser) { navigate('/login'); return; }
+    if (!authUser) {
+      navigate('/login');
+      return;
+    }
+
     const initialize = async () => {
       let currentEvent = event;
       if (!currentEvent || currentEvent.id !== eventId) {
         currentEvent = await loadEventById(eventId);
-        if (!currentEvent) { navigate('/events'); return; }
+        if (!currentEvent) {
+          navigate('/events');
+          return;
+        }
       }
+
       const entry = guestEvents.find((e) => e.event?.id === eventId);
-      if (entry?.guest) { setGuest(entry.guest); setPageLoading(false); return; }
-      if (guest?.eventId === eventId) { setPageLoading(false); return; }
+      if (entry?.guest) {
+        setGuest(entry.guest);
+        setPageLoading(false);
+        return;
+      }
+
+      if (guest?.eventId === eventId) {
+        setPageLoading(false);
+        return;
+      }
+
       const isHost = currentEvent.adminId === authUser.id;
       if (isHost) {
         const firstName = userProfile?.firstName || authUser.user_metadata?.firstName || 'Organisateur';
         const lastName = userProfile?.lastName || authUser.user_metadata?.lastName || 'Hôte';
-        await joinEvent({ code: currentEvent.accessCode, firstName, lastName, phone: userProfile?.phone || '', relation: 'Organisateur' });
+        await joinEvent({
+          code: currentEvent.accessCode,
+          firstName,
+          lastName,
+          phone: userProfile?.phone || authUser.user_metadata?.phone || '',
+          relation: 'Organisateur',
+        });
         setPageLoading(false);
         return;
       }
+
       const list = await loadGuests(eventId);
       const hostGuest = list.find((g) => g.authUserId === authUser.id);
       if (hostGuest) setGuest(hostGuest);
       setPageLoading(false);
     };
+
     initialize();
   }, [authUser, event, eventId, guest, guestEvents, loadEventById, loadGuests, joinEvent, navigate, setGuest, userProfile]);
 
@@ -80,51 +114,38 @@ export default function UploadPage() {
     setUploadError('');
   };
 
-  const removeFile = (id) => {
-    setSelectedFiles((cur) => {
-      const removed = cur.find((i) => i.id === id);
-      if (removed) URL.revokeObjectURL(removed.preview);
-      return cur.filter((i) => i.id !== id);
-    });
-    setSelectedIds((cur) => { const s = new Set(cur); s.delete(id); return s; });
-  };
-
-  const toggleSelect = (id) => {
-    setSelectedIds((cur) => {
-      const s = new Set(cur);
-      if (s.has(id)) s.delete(id); else s.add(id);
-      return s;
-    });
-  };
-
-  const deleteSelected = () => {
-    setSelectedFiles((cur) => {
-      cur.filter((i) => selectedIds.has(i.id)).forEach((i) => URL.revokeObjectURL(i.preview));
-      return cur.filter((i) => !selectedIds.has(i.id));
-    });
-    setSelectedIds(new Set());
-  };
+  const removeFile = (id) => setSelectedFiles((cur) => {
+    const removed = cur.find((i) => i.id === id);
+    if (removed) URL.revokeObjectURL(removed.preview);
+    return cur.filter((i) => i.id !== id);
+  });
 
   const clearSelection = () => {
     selectedFiles.forEach((i) => URL.revokeObjectURL(i.preview));
     if (recordedAudioUrl) URL.revokeObjectURL(recordedAudioUrl);
     setSelectedFiles([]);
-    setSelectedIds(new Set());
     setRecordedAudioUrl('');
     setUploadError('');
     setSeconds(0);
+    setDescription('');
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedFiles.length) { setUploadError('Sélectionnez au moins un fichier.'); return; }
-    if (!guest) { setUploadError("Vous devez rejoindre cet événement d'abord."); return; }
+    if (!selectedFiles.length) {
+      setUploadError('Sélectionnez au moins un fichier.');
+      return;
+    }
+    if (!guest) {
+      setUploadError('Vous devez rejoindre cet événement d\'abord.');
+      return;
+    }
     setIsUploading(true);
     setUploadError('');
     setMessage(`Upload de ${selectedFiles.length} fichier(s)…`);
     for (const item of selectedFiles) {
-      const result = await uploadMedia({ file: item.file, type });
+      const result = await uploadMedia({ file: item.file, type, description: description.trim() || undefined });
       if (!result.success) {
         setUploadError(result.error || 'Échec upload.');
         setIsUploading(false);
@@ -143,7 +164,11 @@ export default function UploadPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       const chunks = [];
-      recorder.ondataavailable = (ev) => { if (ev.data.size > 0) chunks.push(ev.data); };
+
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) chunks.push(ev.data);
+      };
+
       recorder.onstop = () => {
         const blob = new Blob(chunks, { type: 'audio/webm' });
         const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' });
@@ -153,6 +178,7 @@ export default function UploadPage() {
         setRecording(false);
         if (timerRef.current) clearInterval(timerRef.current);
       };
+
       recorder.start();
       setAudioStream(stream);
       setMediaRecorder(recorder);
@@ -160,13 +186,16 @@ export default function UploadPage() {
       setSeconds(0);
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000);
     } catch {
-      setUploadError("Impossible d'accéder au microphone.");
+      setUploadError('Impossible d\'accéder au microphone.');
     }
   };
 
   const stopRecording = () => {
     if (mediaRecorder) mediaRecorder.stop();
-    if (audioStream) { audioStream.getTracks().forEach((t) => t.stop()); setAudioStream(null); }
+    if (audioStream) {
+      audioStream.getTracks().forEach((track) => track.stop());
+      setAudioStream(null);
+    }
     setMediaRecorder(null);
   };
 
@@ -177,7 +206,6 @@ export default function UploadPage() {
   };
 
   const canUpload = selectedFiles.length > 0 && guest;
-  const hasSelection = selectedIds.size > 0;
 
   if (pageLoading) return <LoadingOverlay message="Chargement…" />;
 
@@ -215,13 +243,24 @@ export default function UploadPage() {
         {type !== 'audio' ? (
           <div>
             <div className="drop-zone">
-              <input ref={fileInputRef} type="file" accept={acceptMap[type]} multiple onChange={handleFilesChange} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={acceptMap[type]}
+                multiple
+                onChange={handleFilesChange}
+              />
               <div className="drop-zone-icon">
                 <Icon name={dropIcon} size={36} />
               </div>
               <h3 className="section-title" style={{ fontSize: 24, marginBottom: 8 }}>{dropTitle}</h3>
               <p className="welcome-subtitle">Glissez-déposez vos fichiers ici ou touchez pour parcourir.</p>
-              <button type="button" className="btn-primary btn-pill" style={{ marginTop: 32 }} onClick={() => fileInputRef.current?.click()}>
+              <button
+                type="button"
+                className="btn-primary btn-pill"
+                style={{ marginTop: 32 }}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 Parcourir
               </button>
             </div>
@@ -229,52 +268,26 @@ export default function UploadPage() {
             {selectedFiles.length > 0 && (
               <div style={{ marginTop: 24 }}>
                 <div className="section-header-row">
-                  <span className="font-label">
-                    Fichiers ({selectedFiles.length})
-                    {hasSelection && <span style={{ color: 'var(--primary)', marginLeft: 8 }}>{selectedIds.size} sélectionné(s)</span>}
-                  </span>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {hasSelection && (
-                      <button type="button" className="btn-switch" style={{ color: 'var(--error)' }} onClick={deleteSelected}>
-                        <Icon name="delete" size={16} /> Supprimer sélection
-                      </button>
-                    )}
-                    <button type="button" className="btn-switch" style={{ color: 'var(--error)' }} onClick={clearSelection}>
-                      Tout effacer
-                    </button>
-                  </div>
+                  <span className="font-label">Fichiers ({selectedFiles.length})</span>
+                  <button type="button" className="btn-switch" style={{ color: 'var(--error)' }} onClick={clearSelection}>
+                    Tout effacer
+                  </button>
                 </div>
                 <div className="preview-grid">
-                  {selectedFiles.map((item) => {
-                    const isSelected = selectedIds.has(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className={`preview-thumb${isSelected ? ' selected' : ''}`}
-                        onClick={() => toggleSelect(item.id)}
-                      >
-                        {item.file.type.startsWith('image/') ? (
-                          <img src={item.preview} alt={item.file.name} />
-                        ) : (
-                          <video src={item.preview} />
-                        )}
-                        <div className="preview-thumb-overlay">
-                          {isSelected
-                            ? <Icon name="check_circle" size={24} style={{ color: 'white' }} />
-                            : <Icon name="radio_button_unchecked" size={24} style={{ color: 'rgba(255,255,255,0.7)' }} />
-                          }
-                        </div>
-                        <button
-                          type="button"
-                          className="preview-thumb-delete"
-                          onClick={(e) => { e.stopPropagation(); removeFile(item.id); }}
-                          aria-label="Supprimer"
-                        >
-                          <Icon name="close" size={14} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                  {selectedFiles.slice(0, 6).map((item) => (
+                    <div key={item.id} className="preview-thumb">
+                      {item.file.type.startsWith('image/') ? (
+                        <img src={item.preview} alt={item.file.name} />
+                      ) : (
+                        <video src={item.preview} />
+                      )}
+                    </div>
+                  ))}
+                  {selectedFiles.length > 6 && (
+                    <div className="preview-thumb" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--tertiary-container)', color: 'var(--on-tertiary-container)', fontWeight: 600 }}>
+                      +{selectedFiles.length - 6}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -319,6 +332,20 @@ export default function UploadPage() {
 
         {!guest && (
           <p className="message error" style={{ marginTop: 16 }}>Vous devez rejoindre cet événement pour uploader.</p>
+        )}
+
+        {canUpload && (
+          <div className="form-group" style={{ marginTop: 16 }}>
+            <label className="form-label" htmlFor="media-description">Description (optionnel)</label>
+            <textarea
+              id="media-description"
+              className="form-textarea"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Ajoutez un mot sur ce souvenir..."
+              rows={2}
+            />
+          </div>
         )}
 
         <div style={{ marginTop: 'var(--stack-lg)' }}>

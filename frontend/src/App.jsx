@@ -14,6 +14,7 @@ import GuestOnboardingPage from './pages/GuestOnboardingPage';
 import GuestHomePage from './pages/GuestHomePage';
 import UploadPage from './pages/UploadPage';
 import MyMediaPage from './pages/MyMediaPage';
+import EventMediaGalleryPage from './pages/EventMediaGalleryPage';
 import UserProfilePage from './pages/UserProfilePage';
 
 function HomeRedirect() {
@@ -36,6 +37,7 @@ function AppRoutes() {
           <Route path="/events/:id/edit" element={<AdminSetupPage />} />
           <Route path="/events/:id/upload" element={<UploadPage />} />
           <Route path="/events/:id/media" element={<MyMediaPage />} />
+          <Route path="/events/:id/gallery/:type" element={<EventMediaGalleryPage />} />
           <Route path="/events/:id/participants" element={<GuestsPage />} />
           <Route path="/events/:eventId/participant/:id" element={<GuestDetailPage />} />
           <Route path="/events/:id/summary" element={<DashboardPage />} />

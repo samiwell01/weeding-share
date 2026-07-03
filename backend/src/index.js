@@ -57,17 +57,34 @@ function mapGuest(g) {
   };
 }
 
-function mapMedia(item) {
+function mapMedia(item, guest) {
   if (!item) return null;
-  return {
+  const mapped = {
     id: item.id,
     guestId: item.guest_id,
     eventId: item.event_id,
     type: item.type,
     fileName: item.file_name,
     fileUrl: item.file_url,
+    description: item.description || null,
     createdAt: item.created_at,
   };
+  if (guest) {
+    mapped.guest = {
+      id: guest.id,
+      firstName: guest.first_name,
+      lastName: guest.last_name,
+      avatarUrl: guest.avatar_url || null,
+    };
+  } else if (item.guests) {
+    mapped.guest = {
+      id: item.guests.id,
+      firstName: item.guests.first_name,
+      lastName: item.guests.last_name,
+      avatarUrl: item.guests.avatar_url || null,
+    };
+  }
+  return mapped;
 }
 
 function generateAccessCode() {
@@ -183,15 +200,34 @@ async function getSignedFileUrl(storagePath) {
   return data.signedURL;
 }
 
-async function getGuestMedia(guestId) {
-  const { data, error } = await supabase.from('media').select('*').eq('guest_id', guestId).order('created_at', { ascending: false });
-  if (error) return [];
-  const items = data.map(mapMedia);
+async function resolveMediaUrls(items) {
   return Promise.all(items.map(async (item) => {
     if (!item.fileUrl || item.fileUrl.startsWith('http')) return item;
     const signed = await getSignedFileUrl(item.fileUrl);
     return { ...item, fileUrl: signed || item.fileUrl };
   }));
+}
+
+async function getGuestMedia(guestId) {
+  const { data, error } = await supabase.from('media').select('*').eq('guest_id', guestId).order('created_at', { ascending: false });
+  if (error) return [];
+  const items = data.map((m) => mapMedia(m));
+  return resolveMediaUrls(items);
+}
+
+async function getEventMedia(eventId, type) {
+  let query = supabase
+    .from('media')
+    .select('*, guests(*)')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false });
+  if (type && ['photo', 'video', 'audio'].includes(type)) {
+    query = query.eq('type', type);
+  }
+  const { data, error } = await query;
+  if (error) throw error;
+  const items = (data || []).map((m) => mapMedia(m));
+  return resolveMediaUrls(items);
 }
 
 async function getAllGuests(eventId) {
@@ -332,7 +368,7 @@ app.post('/join-event', async (req, res) => {
 
 // Upload media
 app.post('/upload', upload.single('file'), async (req, res) => {
-  const { guestId, eventId, type, authUserId, firstName, lastName, email, phone } = req.body;
+  const { guestId, eventId, type, description, authUserId, firstName, lastName, email, phone } = req.body;
   if (!req.file || !eventId || !type) {
     return res.status(400).json({ error: 'Fichier, eventId et type sont requis.' });
   }
@@ -387,7 +423,14 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('media')
-      .insert([{ guest_id: guestId, event_id: eventId, type, file_name: req.file.originalname, file_url: signedURL }])
+      .insert([{
+        guest_id: finalGuestId,
+        event_id: eventId,
+        type,
+        file_name: req.file.originalname,
+        file_url: signedURL,
+        description: description?.trim() || null,
+      }])
       .select()
       .single();
     if (error) throw error;
@@ -531,6 +574,17 @@ app.get('/guests', async (req, res) => {
 app.get('/guest/:id/media', async (req, res) => {
   const items = await getGuestMedia(req.params.id);
   return res.json({ media: items });
+});
+
+app.get('/event/:id/media', async (req, res) => {
+  try {
+    const { type } = req.query;
+    const items = await getEventMedia(req.params.id, type);
+    return res.json({ media: items });
+  } catch (err) {
+    console.error('event media error', err);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('*', (req, res) => {

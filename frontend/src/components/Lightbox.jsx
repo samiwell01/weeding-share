@@ -1,4 +1,22 @@
 import { useEffect, useCallback } from 'react';
+import Icon from './Icon';
+
+function guestName(guest) {
+  if (!guest) return null;
+  const name = `${guest.firstName || ''} ${guest.lastName || ''}`.trim();
+  return name || null;
+}
+
+function formatDateTime(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 export default function Lightbox({ items, index, onClose, onPrev, onNext }) {
   const item = items[index];
@@ -20,15 +38,23 @@ export default function Lightbox({ items, index, onClose, onPrev, onNext }) {
 
   if (!item) return null;
 
+  const uploader = guestName(item.guest);
+
   return (
     <div className="lightbox-overlay" onClick={onClose}>
-      <button className="lightbox-close" onClick={onClose}>✕</button>
+      <button type="button" className="lightbox-close" onClick={onClose} aria-label="Fermer">
+        <Icon name="close" />
+      </button>
 
       <button
+        type="button"
         className="lightbox-nav lightbox-prev"
         onClick={(e) => { e.stopPropagation(); onPrev(); }}
         disabled={index === 0}
-      >‹</button>
+        aria-label="Précédent"
+      >
+        <Icon name="chevron_left" size={32} />
+      </button>
 
       <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
         {item.type === 'photo' && <img src={item.fileUrl} alt={item.fileName} className="lightbox-img" />}
@@ -39,14 +65,33 @@ export default function Lightbox({ items, index, onClose, onPrev, onNext }) {
             <audio src={item.fileUrl} controls autoPlay />
           </div>
         )}
-        <p className="lightbox-caption">{index + 1} / {items.length} — {item.fileName}</p>
+        <div className="lightbox-meta">
+          <p className="lightbox-caption">{index + 1} / {items.length}</p>
+          {uploader && (
+            <p className="lightbox-uploader">
+              <Icon name="person" size={16} /> {uploader}
+            </p>
+          )}
+          {item.createdAt && (
+            <p className="lightbox-date">
+              <Icon name="schedule" size={16} /> {formatDateTime(item.createdAt)}
+            </p>
+          )}
+          {item.description && (
+            <p className="lightbox-description">{item.description}</p>
+          )}
+        </div>
       </div>
 
       <button
+        type="button"
         className="lightbox-nav lightbox-next"
         onClick={(e) => { e.stopPropagation(); onNext(); }}
         disabled={index === items.length - 1}
-      >›</button>
+        aria-label="Suivant"
+      >
+        <Icon name="chevron_right" size={32} />
+      </button>
     </div>
   );
 }

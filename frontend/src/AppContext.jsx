@@ -14,6 +14,7 @@ export function AppProvider({ children }) {
   const [guests, setGuests] = useState([]);
   const [selectedGuestMedia, setSelectedGuestMedia] = useState([]);
   const [eventStats, setEventStats] = useState({ photos: 0, videos: 0, audios: 0, total: 0 });
+  const [eventMedia, setEventMedia] = useState([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -179,13 +180,14 @@ export function AppProvider({ children }) {
     setMedia(data.media || []);
   };
 
-  const uploadMedia = async ({ file, type: mediaType }) => {
+  const uploadMedia = async ({ file, type: mediaType, description }) => {
     if (!guest || !file) return { success: false, error: 'Missing guest or file' };
     const formData = new FormData();
     formData.append('file', file);
     formData.append('guestId', guest.id);
     formData.append('eventId', guest.eventId);
     formData.append('type', mediaType);
+    if (description) formData.append('description', description);
     const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }
@@ -225,17 +227,27 @@ export function AppProvider({ children }) {
     setSelectedGuestMedia(data.media || []);
   };
 
+  const loadEventMedia = async (eventId, type) => {
+    if (!eventId) return [];
+    const params = type ? `?type=${type}` : '';
+    const res = await fetch(`${API_URL}/event/${eventId}/media${params}`);
+    const data = await res.json();
+    const items = data.media || [];
+    setEventMedia(items);
+    return items;
+  };
+
   return (
     <AppContext.Provider value={{
       authUser, guest, setGuest, event, setEvent,
       guestEvents, userProfile, media, guests, selectedGuestMedia,
-      eventStats, message, setMessage, loading,
+      eventStats, eventMedia, message, setMessage, loading,
       signUp, signIn, signOut, updatePassword,
       loadUserProfile, updateUserProfile,
       loadAdminWedding, loadEventById, loadEventStats, createWedding, updateWedding,
       loadGuestEvents, joinEvent,
       loadMyMedia, uploadMedia, deleteMedia,
-      loadGuests, loadGuestMedia,
+      loadGuests, loadGuestMedia, loadEventMedia,
     }}>
       {children}
     </AppContext.Provider>

@@ -9,6 +9,7 @@
 -- ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_name text;
 -- ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_address text;
 -- ALTER TABLE events ADD COLUMN IF NOT EXISTS cover_url text;
+-- ALTER TABLE media ADD COLUMN IF NOT EXISTS description text;
 
 create extension if not exists "pgcrypto";
 
@@ -50,9 +51,10 @@ create table if not exists media (
   guest_id   uuid not null references guests(id) on delete cascade,
   event_id   uuid not null references events(id) on delete cascade,
   type       text not null check (type in ('photo', 'video', 'audio')),
-  file_name  text not null,
-  file_url   text not null,
-  created_at timestamptz not null default now()
+  file_name    text not null,
+  file_url     text not null,
+  description  text,
+  created_at   timestamptz not null default now()
 );
 
 -- ─── RLS (Row Level Security) ─────────────────────────────────────────────────
