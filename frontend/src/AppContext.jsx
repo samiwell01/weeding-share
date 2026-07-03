@@ -220,6 +220,13 @@ export function AppProvider({ children }) {
     formData.append('guestId', guest.id);
     formData.append('eventId', guest.eventId);
     formData.append('type', mediaType);
+    if (authUser) {
+      formData.append('authUserId', authUser.id);
+      formData.append('firstName', userProfile?.firstName || authUser.user_metadata?.firstName || 'Organisateur');
+      formData.append('lastName', userProfile?.lastName || authUser.user_metadata?.lastName || 'Hôte');
+      formData.append('email', authUser.email || '');
+      formData.append('phone', userProfile?.phone || authUser.user_metadata?.phone || '');
+    }
     const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }

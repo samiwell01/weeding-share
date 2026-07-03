@@ -23,6 +23,7 @@ export default function MyMediaPage() {
   const [pageLoading, setPageLoading] = useState(true);
 
   const viewable = media.filter((m) => m.type === 'photo' || m.type === 'video');
+  const newThreshold = Date.now() - 1000 * 60 * 60 * 24;
 
   useEffect(() => {
     if (!authUser) {
@@ -82,7 +83,12 @@ export default function MyMediaPage() {
                 )}
                 {item.type === 'audio' && <audio src={item.fileUrl} controls className="media-preview-audio" />}
                 <div className="media-card-footer">
-                  <span className="media-card-name">{item.fileName}</span>
+                  <div>
+                    <span className="media-card-name">{item.fileName}</span>
+                    {new Date(item.createdAt).getTime() >= newThreshold && (
+                      <span className="media-new-badge">New</span>
+                    )}
+                  </div>
                   <button onClick={() => deleteMedia(item.id)}>Supprimer</button>
                 </div>
               </div>

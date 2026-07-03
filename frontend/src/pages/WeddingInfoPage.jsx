@@ -6,7 +6,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function WeddingInfoPage() {
   const { id: eventId } = useParams();
-  const { authUser, event, setEvent, loadEventById, loadEventStats, eventStats, guests, loadGuests } = useApp();
+  const { authUser, event, loadEventById, loadEventStats, eventStats, guests, loadGuests } = useApp();
   const navigate = useNavigate();
   const [tab, setTab] = useState('info');
   const [pageLoading, setPageLoading] = useState(true);
@@ -48,16 +48,31 @@ export default function WeddingInfoPage() {
         </div>
       </div>
 
+      <div className="event-summary-block">
+        {event.description ? <p className="event-summary-text">{event.description}</p> : <p className="event-summary-text">Aucune description pour le moment. Ajoutez-en une pour mieux présenter l'événement.</p>}
+        <div className="event-summary-details">
+          {event.venueName && <span>📍 {event.venueName}</span>}
+          {event.venueAddress && <span>📌 {event.venueAddress}</span>}
+          {fmt(event.date) && <span>📅 {fmt(event.date)}{fmtTime(event.time) ? ` • ${fmtTime(event.time)}` : ''}</span>}
+        </div>
+      </div>
+
       <div className="event-detail-body">
         <div className="event-tabs">
           <button className={tab === 'info' ? 'tab active' : 'tab'} onClick={() => setTab('info')}>Infos</button>
+          <button className={tab === 'photo' ? 'tab active' : 'tab'} onClick={() => setTab('photo')}>Photos{eventStats.photos > 0 ? ' • ' + eventStats.photos : ''}</button>
+          <button className={tab === 'video' ? 'tab active' : 'tab'} onClick={() => setTab('video')}>Vidéos{eventStats.videos > 0 ? ' • ' + eventStats.videos : ''}</button>
           <button className={tab === 'stats' ? 'tab active' : 'tab'} onClick={() => setTab('stats')}>Statistiques</button>
-          {isHost && <button className={tab === 'invite' ? 'tab active' : 'tab'} onClick={() => setTab('invite')}>Inviter</button>}
+          <button className={tab === 'invite' ? 'tab active' : 'tab'} onClick={() => setTab('invite')}>Invités</button>
+          {isHost && <button className={tab === 'audio' ? 'tab active' : 'tab'} onClick={() => setTab('audio')}>Audio{eventStats.audios > 0 ? ' • ' + eventStats.audios : ''}</button>}
         </div>
 
         {tab === 'info' && (
           <>
-            {event.description && <p className="event-detail-desc">{event.description}</p>}
+            <div className="event-detail-desc-block">
+              <h3>À propos de l'événement</h3>
+              {event.description ? <p>{event.description}</p> : <p>Aucune description pour le moment.</p>}
+            </div>
             <div className="event-info-grid">
               {event.venueName && (
                 <div className="info-block">
@@ -97,6 +112,32 @@ export default function WeddingInfoPage() {
           </>
         )}
 
+        {tab === 'photo' && (
+          <div className="media-tab-section">
+            {eventStats.photos === 0 ? (
+              <p className="no-media-message">Aucune photo pour le moment.</p>
+            ) : (
+              <>
+                <p className="tab-summary">{eventStats.photos} photo(s) disponibles pour cet événement.</p>
+                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
+              </>
+            )}
+          </div>
+        )}
+
+        {tab === 'video' && (
+          <div className="media-tab-section">
+            {eventStats.videos === 0 ? (
+              <p className="no-media-message">Aucune vidéo pour le moment.</p>
+            ) : (
+              <>
+                <p className="tab-summary">{eventStats.videos} vidéo(s) disponibles pour cet événement.</p>
+                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
+              </>
+            )}
+          </div>
+        )}
+
         {tab === 'stats' && (
           <div className="stats-section">
             <div className="stats-hero-grid">
@@ -132,7 +173,7 @@ export default function WeddingInfoPage() {
           </div>
         )}
 
-        {tab === 'invite' && isHost && (
+        {tab === 'invite' && (
           <div className="invite-section">
             <h3>Inviter des participants</h3>
             <p className="auth-subtitle">Partagez ce lien ou ce QR code</p>
@@ -147,6 +188,19 @@ export default function WeddingInfoPage() {
             <div className="qr-wrapper">
               <QRCodeSVG value={inviteUrl} size={200} />
             </div>
+          </div>
+        )}
+
+        {tab === 'audio' && isHost && (
+          <div className="media-tab-section">
+            {eventStats.audios === 0 ? (
+              <p className="no-media-message">Aucun message audio pour le moment.</p>
+            ) : (
+              <>
+                <p className="tab-summary">{eventStats.audios} message(s) audio disponibles.</p>
+                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
+              </>
+            )}
           </div>
         )}
       </div>

@@ -317,15 +317,41 @@ app.post('/join-event', async (req, res) => {
 
 // Upload media
 app.post('/upload', upload.single('file'), async (req, res) => {
-  const { guestId, eventId, type } = req.body;
-  if (!req.file || !guestId || !eventId || !type) {
-    return res.status(400).json({ error: 'Fichier, guestId, eventId et type sont requis.' });
+  const { guestId, eventId, type, authUserId, firstName, lastName, email, phone } = req.body;
+  if (!req.file || !eventId || !type) {
+    return res.status(400).json({ error: 'Fichier, eventId et type sont requis.' });
   }
 
-  const valid = await guestHasCorrectEvent(guestId, eventId);
-  if (!valid) return res.status(403).json({ error: 'Invité non autorisé.' });
+  let finalGuestId = guestId;
+  let valid = false;
 
-  const storagePath = `${eventId}/${guestId}/${Date.now()}-${req.file.originalname}`;
+  if (guestId) {
+    valid = await guestHasCorrectEvent(guestId, eventId);
+    if (valid) finalGuestId = guestId;
+  }
+
+  if (!valid && authUserId) {
+    const event = await getEventById(eventId);
+    if (event && event.adminId === authUserId) {
+      const nameFirst = firstName || 'Organisateur';
+      const nameLast = lastName || 'Hôte';
+      const { guest } = await getOrCreateGuestByAuth(eventId, authUserId, {
+        firstName: nameFirst,
+        lastName: nameLast,
+        email: email || null,
+        phone: phone || null,
+        relation: 'Organisateur',
+        role: 'admin',
+        isAdmin: true,
+      });
+      finalGuestId = guest.id;
+      valid = true;
+    }
+  }
+
+  if (!valid || !finalGuestId) return res.status(403).json({ error: 'Invité non autorisé.' });
+
+  const storagePath = `${eventId}/${finalGuestId}/${Date.now()}-${req.file.originalname}`;
   const { error: storageError } = await supabase.storage
     .from(bucketName)
     .upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: true });

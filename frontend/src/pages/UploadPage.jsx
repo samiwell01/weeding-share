@@ -10,12 +10,15 @@ export default function UploadPage() {
     authUser,
     guest,
     setGuest,
+    event,
+    loadEventById,
     guestEvents,
-    guests,
     loadGuests,
+    joinEvent,
     uploadMedia,
     message,
     setMessage,
+    userProfile,
   } = useApp();
 
   const [selectedFiles, setSelectedFiles] = useState([]);
@@ -34,8 +37,17 @@ export default function UploadPage() {
       return;
     }
 
-    const entry = guestEvents.find((e) => e.event?.id === eventId);
     const initialize = async () => {
+      let currentEvent = event;
+      if (!currentEvent || currentEvent.id !== eventId) {
+        currentEvent = await loadEventById(eventId);
+        if (!currentEvent) {
+          navigate('/events');
+          return;
+        }
+      }
+
+      const entry = guestEvents.find((e) => e.event?.id === eventId);
       if (entry?.guest) {
         setGuest(entry.guest);
         setPageLoading(false);
@@ -47,6 +59,21 @@ export default function UploadPage() {
         return;
       }
 
+      const isHost = currentEvent.adminId === authUser.id;
+      if (isHost) {
+        const firstName = userProfile?.firstName || authUser.user_metadata?.firstName || 'Organisateur';
+        const lastName = userProfile?.lastName || authUser.user_metadata?.lastName || 'Hôte';
+        await joinEvent({
+          code: currentEvent.accessCode,
+          firstName,
+          lastName,
+          phone: userProfile?.phone || authUser.user_metadata?.phone || '',
+          relation: 'Organisateur',
+        });
+        setPageLoading(false);
+        return;
+      }
+
       const list = await loadGuests(eventId);
       const hostGuest = list.find((g) => g.authUserId === authUser.id);
       if (hostGuest) setGuest(hostGuest);
@@ -54,7 +81,7 @@ export default function UploadPage() {
     };
 
     initialize();
-  }, [authUser, eventId, guest, guestEvents, loadGuests, navigate, setGuest]);
+  }, [authUser, event, eventId, guest, guestEvents, loadEventById, loadGuests, joinEvent, navigate, setGuest, userProfile]);
 
   const handleFilesChange = (e) => {
     const files = Array.from(e.target.files || []);
