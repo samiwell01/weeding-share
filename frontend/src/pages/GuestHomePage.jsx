@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
+import Icon from '../components/Icon';
 
 const sortOptions = [
   { value: 'recent', label: 'Récent' },
@@ -21,6 +22,7 @@ export default function GuestHomePage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('recent');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     if (!authUser) { navigate('/login'); return; }
@@ -87,86 +89,128 @@ export default function GuestHomePage() {
     navigate(`/events/${entry.event.id}`);
   };
 
+  const firstName = userProfile?.firstName || 'vous';
+
   if (!authUser) return null;
 
   return (
-    <div className="card">
-      <div className="section-header">
-        <div>
-          <h2>Mes événements</h2>
-          <p className="auth-subtitle">Créez, rejoignez et suivez tous vos événements ici.</p>
-        </div>
-        <div className="action-buttons">
-          <button className="button" onClick={() => navigate('/events/create')}>Créer un événement</button>
-          <button className="button button-secondary" onClick={() => { setShowJoin(true); setJoinStep('code'); setError(''); }}>Rejoindre un événement</button>
-        </div>
-      </div>
+    <div className="page-main">
+      <section className="welcome-section">
+        <h2 className="welcome-title">Bienvenue, {firstName}</h2>
+        <p className="welcome-subtitle">Prête à capturer de nouveaux souvenirs ?</p>
+      </section>
 
-      <div className="list-controls">
+      <section className="search-bar">
+        <Icon name="search" />
         <input
+          className="search-input"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un événement, lieu ou catégorie"
+          placeholder="Rechercher un événement..."
+          type="text"
         />
-        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-          <option value="all">Toutes les catégories</option>
-          {categories.map((category) => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-        </select>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          {sortOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </div>
+        <button type="button" className="search-filter-btn" onClick={() => setShowFilters((v) => !v)} aria-label="Filtres">
+          <Icon name="tune" />
+        </button>
+      </section>
 
-      {filteredEvents.length === 0 ? (
-        <p className="auth-subtitle">Aucun événement trouvé. Créez ou rejoignez-en un pour commencer.</p>
-      ) : (
-        <div className="event-list">
-          {filteredEvents.map((entry) => (
-            <div key={entry.event.id} className="event-card" onClick={() => openEvent(entry)}>
-              <div className="event-card-cover" style={{ backgroundImage: `url(${entry.event.coverUrl || 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=900&q=70'})` }} />
-              <div className="event-card-info">
-                <div className="event-card-top">
-                  <strong>{entry.event?.name || 'Événement'}</strong>
-                  <span className={`event-badge ${entry.isHost || entry.guest?.isAdmin ? 'host' : 'guest'}`}>
-                    {entry.isHost || entry.guest?.isAdmin ? 'Organisateur' : 'Invité'}
-                  </span>
-                </div>
-                {entry.event?.category && <span className="event-meta">{entry.event.category}</span>}
-                {entry.event?.description && <p className="event-description">{entry.event.description}</p>}
-                <div className="event-meta-row">
-                  {entry.event?.date && <span>{new Date(entry.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
-                  {entry.event?.venueName && <span>{entry.event.venueName}</span>}
-                </div>
-              </div>
-              <div className="event-card-actions">
-                <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small">Voir</button>
-              </div>
-            </div>
-          ))}
+      {showFilters && (
+        <div className="filter-row">
+          <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+            <option value="all">Toutes les catégories</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </select>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </div>
       )}
+
+      <section className="quick-actions-grid">
+        <button type="button" className="quick-action-btn primary" onClick={() => { setShowJoin(true); setJoinStep('code'); setError(''); }}>
+          <Icon name="qr_code_scanner" size={32} />
+          Rejoindre par code
+        </button>
+        <button type="button" className="quick-action-btn secondary" onClick={() => navigate('/events/create')}>
+          <Icon name="add_circle" size={32} />
+          Créer un événement
+        </button>
+      </section>
+
+      <section>
+        <div className="section-header-row">
+          <h3 className="section-title">Mes Événements</h3>
+          <span className="font-label" style={{ color: 'var(--primary)' }}>{filteredEvents.length} événement{filteredEvents.length !== 1 ? 's' : ''}</span>
+        </div>
+
+        {filteredEvents.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <Icon name="event" size={48} />
+            </div>
+            <div>
+              <h3 className="section-title">Aucun événement</h3>
+              <p className="welcome-subtitle">Créez ou rejoignez un événement pour commencer.</p>
+            </div>
+          </div>
+        ) : (
+          <div className="events-grid">
+            {filteredEvents.map((entry) => (
+              <div key={entry.event.id} className="memory-frame event-memory-card" onClick={() => openEvent(entry)} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && openEvent(entry)}>
+                <div className="event-card-cover-wrap">
+                  <img
+                    src={entry.event.coverUrl || 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=900&q=70'}
+                    alt={entry.event.name}
+                  />
+                  {entry.event?.category && (
+                    <span className="category-chip">{entry.event.category}</span>
+                  )}
+                </div>
+                <div>
+                  <h4 className="event-card-title">
+                    {entry.event?.name || 'Événement'}
+                    <span className={`role-badge ${entry.isHost || entry.guest?.isAdmin ? 'host' : 'guest'}`}>
+                      {entry.isHost || entry.guest?.isAdmin ? 'Organisateur' : 'Invité'}
+                    </span>
+                  </h4>
+                  {entry.event?.date && (
+                    <div className="event-card-date">
+                      <Icon name="calendar_today" size={18} />
+                      {new Date(entry.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                  )}
+                  {entry.event?.venueName && (
+                    <p className="welcome-subtitle" style={{ fontSize: 13 }}>{entry.event.venueName}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       {showJoin && (
         <div className="modal-overlay" onClick={() => setShowJoin(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setShowJoin(false)}>✕</button>
+            <button type="button" className="modal-close" onClick={() => setShowJoin(false)}>✕</button>
 
             {joinStep === 'code' && (
               <>
                 <h3>Rejoindre un événement</h3>
                 <form onSubmit={handleCodeSubmit}>
                   <input
+                    className="form-input"
                     value={code}
                     onChange={(e) => setCode(e.target.value.toUpperCase())}
                     placeholder="Code d'invitation (ex: A1B2C3)"
                     style={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}
                   />
                   {error && <p className="message error">{error}</p>}
-                  <button type="submit">Continuer</button>
+                  <button type="submit" className="btn-primary btn-primary-full">Continuer</button>
                 </form>
               </>
             )}
@@ -176,11 +220,17 @@ export default function GuestHomePage() {
                 <h3>Vos informations</h3>
                 <p className="auth-subtitle">Code : <strong>{code}</strong></p>
                 <form onSubmit={handleJoin}>
-                  <label>Prénom *<input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required /></label>
-                  <label>Nom *<input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required /></label>
-                  <label>Téléphone<input value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" /></label>
+                  <label>Prénom *
+                    <input className="form-input" value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required />
+                  </label>
+                  <label>Nom *
+                    <input className="form-input" value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required />
+                  </label>
+                  <label>Téléphone
+                    <input className="form-input" value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" />
+                  </label>
                   <label>Vous êtes...
-                    <select value={form.relation} onChange={setField('relation')}>
+                    <select className="form-input" value={form.relation} onChange={setField('relation')}>
                       <option value="">Sélectionner</option>
                       <option value="famille">Famille</option>
                       <option value="ami">Ami(e)</option>
@@ -189,7 +239,9 @@ export default function GuestHomePage() {
                     </select>
                   </label>
                   {error && <p className="message error">{error}</p>}
-                  <button type="submit" disabled={loading}>{loading ? '...' : 'Rejoindre 🎉'}</button>
+                  <button type="submit" className="btn-primary btn-primary-full" disabled={loading}>
+                    {loading ? '...' : 'Rejoindre'}
+                  </button>
                   <button type="button" className="btn-switch" onClick={() => setJoinStep('code')}>← Changer le code</button>
                 </form>
               </>

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import LoadingOverlay from '../components/LoadingOverlay';
+import Icon from '../components/Icon';
 
 function GuestAvatar({ firstName, lastName, avatarUrl }) {
   const initials = `${(firstName || '?')[0]}${(lastName || '')[0] || ''}`.toUpperCase();
-  if (avatarUrl) return <img src={avatarUrl} alt="avatar" className="guest-avatar-img" />;
-  return <div className="guest-avatar-initials">{initials}</div>;
+  if (avatarUrl) return <img src={avatarUrl} alt="avatar" />;
+  return <span className="guest-avatar-initials">{initials}</span>;
 }
 
-const RELATION_COLORS = { famille: '#fde68a', ami: '#bbf7d0', 'collègue': '#bfdbfe', autre: '#e5e7eb' };
+const RELATION_COLORS = { famille: '#e1e6c2', ami: '#d4e8c2', 'collègue': '#f2dfd0', autre: '#eeeee9', Organisateur: '#d4a373' };
 
 export default function GuestsPage() {
   const { id: eventId } = useParams();
@@ -49,16 +50,26 @@ export default function GuestsPage() {
   if (pageLoading) return <LoadingOverlay message="Chargement des participants…" />;
 
   return (
-    <div className="card">
-      <div className="section-header">
-        <h2>Participants {event ? `— ${event.name}` : ''}</h2>
-        <button className="btn-small" onClick={() => loadGuests(event?.id)}>↻</button>
+    <div className="page-main">
+      <div style={{ marginBottom: 'var(--stack-lg)' }}>
+        <h2 className="welcome-title">Participants</h2>
+        <p className="welcome-subtitle">{event ? event.name : ''} — {guests.length} personne{guests.length !== 1 ? 's' : ''}</p>
       </div>
 
-      <div className="list-controls">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher un participant…" />
+      <div className="search-bar">
+        <Icon name="search" />
+        <input
+          className="search-input"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un participant…"
+          type="text"
+        />
+      </div>
+
+      <div className="filter-row">
         <select value={relationFilter} onChange={(e) => setRelationFilter(e.target.value)}>
-          <option value="all">Tous</option>
+          <option value="all">Toutes les relations</option>
           {relations.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
         <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
@@ -69,19 +80,27 @@ export default function GuestsPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <p className="auth-subtitle">Aucun participant trouvé.</p>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <Icon name="group" size={48} />
+          </div>
+          <h3 className="section-title">Aucun participant</h3>
+          <p className="welcome-subtitle">Invitez vos proches pour qu'ils rejoignent l'événement.</p>
+        </div>
       ) : (
-        <div className="guests-grid">
+        <div className="guests-list">
           {filtered.map((g) => (
-            <Link key={g.id} to={`/events/${eventId}/participant/${g.id}`} className="guest-card">
-              <GuestAvatar firstName={g.firstName} lastName={g.lastName} avatarUrl={g.avatarUrl} />
-              <div className="guest-card-info">
+            <Link key={g.id} to={`/events/${eventId}/participant/${g.id}`} className="guest-list-item">
+              <div className="guest-avatar">
+                <GuestAvatar firstName={g.firstName} lastName={g.lastName} avatarUrl={g.avatarUrl} />
+              </div>
+              <div className="guest-info">
                 <strong>{g.firstName} {g.lastName}</strong>
                 {g.email && <span>{g.email}</span>}
                 {g.phone && <span>{g.phone}</span>}
               </div>
               {g.relation && (
-                <span className="guest-relation-badge" style={{ background: RELATION_COLORS[g.relation] || '#e5e7eb' }}>
+                <span className="guest-relation-badge" style={{ background: RELATION_COLORS[g.relation] || '#eeeee9' }}>
                   {g.relation}
                 </span>
               )}
@@ -90,9 +109,9 @@ export default function GuestsPage() {
         </div>
       )}
 
-      <div className="navigation-buttons">
-        <Link to={`/events/${eventId}`} className="button button-secondary">Retour</Link>
-      </div>
+      <Link to={`/events/${eventId}`} className="btn-outline btn-primary-full" style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
+        Retour à l'événement
+      </Link>
     </div>
   );
 }

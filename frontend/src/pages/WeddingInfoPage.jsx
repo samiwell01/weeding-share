@@ -3,12 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useApp } from '../AppContext';
 import LoadingOverlay from '../components/LoadingOverlay';
+import Icon from '../components/Icon';
 
 export default function WeddingInfoPage() {
   const { id: eventId } = useParams();
   const { authUser, event, loadEventById, loadEventStats, eventStats, guests, loadGuests } = useApp();
   const navigate = useNavigate();
-  const [tab, setTab] = useState('info');
+  const [showInvite, setShowInvite] = useState(false);
+  const [toast, setToast] = useState('');
   const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
@@ -27,183 +29,174 @@ export default function WeddingInfoPage() {
     load();
   }, [authUser, eventId]);
 
+  const copyLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/events/join/${event.accessCode}`);
+    setToast('Lien copié !');
+    setTimeout(() => setToast(''), 3000);
+  };
+
   if (pageLoading) return <LoadingOverlay message="Chargement de l'événement…" />;
   if (!event) return null;
 
   const isHost = event.adminId === authUser?.id;
   const inviteUrl = `${window.location.origin}/events/join/${event.accessCode}`;
   const fmt = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
-  const fmtTime = (t) => t ? t.slice(0, 5) : null;
+  const coverUrl = event.coverUrl || 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=1200&q=70';
+
+  if (showInvite && isHost) {
+    return (
+      <div className="page-main-narrow">
+        <div className="invite-page-header">
+          <h2 className="welcome-title" style={{ color: 'var(--primary)' }}>Inviter des proches</h2>
+          <p className="welcome-subtitle">Partagez cet espace pour collecter chaque moment précieux.</p>
+        </div>
+
+        <div className="invite-memory-frame">
+          <div className="invite-qr-box">
+            <QRCodeSVG value={inviteUrl} size={192} />
+          </div>
+          <p className="font-label-sm" style={{ textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--on-surface-variant)', marginBottom: 4 }}>
+            Votre code d'accès
+          </p>
+          <p className="invite-code-display">{event.accessCode}</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
+          <button type="button" className="btn-primary btn-primary-full btn-pill" onClick={copyLink}>
+            <Icon name="link" size={20} /> Copier le lien d'invitation
+          </button>
+          <button type="button" className="btn-outline btn-primary-full btn-pill" onClick={() => {
+            if (navigator.share) navigator.share({ title: event.name, url: inviteUrl });
+          }}>
+            <Icon name="share" size={20} /> Partager par message
+          </button>
+        </div>
+
+        <div className="invite-hint-card sage">
+          <div className="invite-hint-icon" style={{ background: 'var(--secondary-container)' }}>
+            <Icon name="qr_code_scanner" />
+          </div>
+          <div>
+            <p className="font-label" style={{ color: 'var(--on-secondary-container)', marginBottom: 4 }}>Scanner pour rejoindre</p>
+            <p className="welcome-subtitle" style={{ fontSize: 14 }}>Les invités peuvent pointer leur appareil photo vers le QR code.</p>
+          </div>
+        </div>
+
+        <div className="invite-hint-card cream">
+          <div className="invite-hint-icon" style={{ background: 'rgba(186,169,155,0.4)' }}>
+            <Icon name="key" />
+          </div>
+          <div>
+            <p className="font-label" style={{ color: 'var(--on-tertiary-container)', marginBottom: 4 }}>Saisie manuelle</p>
+            <p className="welcome-subtitle" style={{ fontSize: 14 }}>
+              Entrez le code <strong>{event.accessCode}</strong> sur l'écran d'accueil.
+            </p>
+          </div>
+        </div>
+
+        <button type="button" className="btn-outline btn-primary-full" style={{ marginTop: 24 }} onClick={() => setShowInvite(false)}>
+          Retour à l'événement
+        </button>
+
+        {toast && <div className="toast" style={{ opacity: 1 }}>{toast}</div>}
+      </div>
+    );
+  }
 
   return (
-    <div className="event-detail-page">
-      <div className="event-detail-cover" style={{ backgroundImage: `url(${event.coverUrl || 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=1200&q=70'})` }}>
-        <div className="event-detail-cover-overlay">
-          <button className="event-back-btn" onClick={() => navigate('/events')}>← Retour</button>
-          <div className="event-detail-cover-content">
-            {event.category && <span className="event-category-pill">{event.category}</span>}
-            <h1 className="event-detail-title">{event.name}</h1>
-            {fmt(event.date) && <p className="event-detail-date">{fmt(event.date)}{fmtTime(event.time) ? ` · ${fmtTime(event.time)}` : ''}</p>}
+    <div className="page-main">
+      <section className="event-hero">
+        <div className="event-hero-image" style={{ backgroundImage: `url(${coverUrl})` }} />
+        <div className="event-hero-overlay">
+          {event.category && <span className="event-hero-pill">{event.category}</span>}
+          <h1 className="event-hero-title">{event.name}</h1>
+          <div className="event-hero-meta">
+            {fmt(event.date) && (
+              <span><Icon name="calendar_month" size={18} /> {fmt(event.date)}</span>
+            )}
+            {event.venueName && (
+              <span><Icon name="location_on" size={18} /> {event.venueName}</span>
+            )}
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="event-summary-block">
-        {event.description ? <p className="event-summary-text">{event.description}</p> : <p className="event-summary-text">Aucune description pour le moment. Ajoutez-en une pour mieux présenter l'événement.</p>}
-        <div className="event-summary-details">
-          {event.venueName && <span>📍 {event.venueName}</span>}
-          {event.venueAddress && <span>📌 {event.venueAddress}</span>}
-          {fmt(event.date) && <span>📅 {fmt(event.date)}{fmtTime(event.time) ? ` • ${fmtTime(event.time)}` : ''}</span>}
+      <section className="stats-summary">
+        <div className="stat-item">
+          <span className="stat-number">{eventStats.photos}</span>
+          <span className="stat-label">Photos</span>
         </div>
-      </div>
-
-      <div className="event-detail-body">
-        <div className="event-tabs">
-          <button className={tab === 'info' ? 'tab active' : 'tab'} onClick={() => setTab('info')}>Infos</button>
-          <button className={tab === 'photo' ? 'tab active' : 'tab'} onClick={() => setTab('photo')}>Photos{eventStats.photos > 0 ? ' • ' + eventStats.photos : ''}</button>
-          <button className={tab === 'video' ? 'tab active' : 'tab'} onClick={() => setTab('video')}>Vidéos{eventStats.videos > 0 ? ' • ' + eventStats.videos : ''}</button>
-          <button className={tab === 'stats' ? 'tab active' : 'tab'} onClick={() => setTab('stats')}>Statistiques</button>
-          <button className={tab === 'invite' ? 'tab active' : 'tab'} onClick={() => setTab('invite')}>Invités</button>
-          {isHost && <button className={tab === 'audio' ? 'tab active' : 'tab'} onClick={() => setTab('audio')}>Audio{eventStats.audios > 0 ? ' • ' + eventStats.audios : ''}</button>}
+        <div className="stat-divider" />
+        <div className="stat-item">
+          <span className="stat-number">{eventStats.videos}</span>
+          <span className="stat-label">Vidéos</span>
         </div>
+        <div className="stat-divider" />
+        <div className="stat-item">
+          <span className="stat-number">{eventStats.audios}</span>
+          <span className="stat-label">Audios</span>
+        </div>
+      </section>
 
-        {tab === 'info' && (
+      <section style={{ marginBottom: 'var(--stack-md)' }}>
+        <h3 className="section-title" style={{ color: 'var(--primary)', marginBottom: 12 }}>À propos de l'événement</h3>
+        <p className="welcome-subtitle" style={{ lineHeight: 1.7 }}>
+          {event.description || 'Rejoignez-nous pour célébrer ce moment inoubliable. Partagez vos plus beaux souvenirs sur cet espace dédié.'}
+        </p>
+        {event.category && (
+          <div className="tag-chips">
+            <span className="tag-chip">#{event.category}</span>
+            {event.venueName && <span className="tag-chip">#{event.venueName.replace(/\s+/g, '')}</span>}
+          </div>
+        )}
+      </section>
+
+      <section className="action-grid">
+        <Link to={`/events/${event.id}/upload`} className="action-grid-btn primary">
+          <Icon name="add_circle" size={32} />
+          Ajouter
+        </Link>
+        <Link to={`/events/${event.id}/media`} className="action-grid-btn secondary">
+          <Icon name="photo_library" size={32} style={{ color: 'var(--primary)' }} />
+          Mes Médias
+        </Link>
+        <Link to={`/events/${event.id}/participants`} className="action-grid-btn secondary">
+          <Icon name="group" size={32} style={{ color: 'var(--primary)' }} />
+          Participants
+        </Link>
+        {isHost ? (
           <>
-            <div className="event-detail-desc-block">
-              <h3>À propos de l'événement</h3>
-              {event.description ? <p>{event.description}</p> : <p>Aucune description pour le moment.</p>}
-            </div>
-            <div className="event-info-grid">
-              {event.venueName && (
-                <div className="info-block">
-                  <span className="info-icon">📍</span>
-                  <span className="info-label">Lieu</span>
-                  <span className="info-value">{event.venueName}</span>
-                </div>
-              )}
-              {event.venueAddress && (
-                <div className="info-block full">
-                  <span className="info-icon">🗺</span>
-                  <span className="info-label">Adresse</span>
-                  <span className="info-value">{event.venueAddress}</span>
-                </div>
-              )}
-              {fmt(event.date) && (
-                <div className="info-block">
-                  <span className="info-icon">📅</span>
-                  <span className="info-label">Date</span>
-                  <span className="info-value">{fmt(event.date)}</span>
-                </div>
-              )}
-              {fmtTime(event.time) && (
-                <div className="info-block">
-                  <span className="info-icon">🕐</span>
-                  <span className="info-label">Heure</span>
-                  <span className="info-value">{fmtTime(event.time)}</span>
-                </div>
-              )}
-            </div>
-            <div className="navigation-buttons">
-              <Link to={`/events/${event.id}/media`} className="button">📸 Mes médias</Link>
-              <Link to={`/events/${event.id}/upload`} className="button">📤 Ajouter</Link>
-              <Link to={`/events/${event.id}/participants`} className="button button-secondary">👥 Participants ({guests.length})</Link>
-              {isHost && <Link to={`/events/${event.id}/edit`} className="button button-secondary">✏️ Modifier</Link>}
-            </div>
+            <Link to={`/events/${event.id}/edit`} className="action-grid-btn secondary">
+              <Icon name="settings" size={32} style={{ color: 'var(--primary)' }} />
+              Modifier
+            </Link>
           </>
+        ) : (
+          <button type="button" className="action-grid-btn secondary" onClick={() => navigate('/events')}>
+            <Icon name="arrow_back" size={32} style={{ color: 'var(--primary)' }} />
+            Retour
+          </button>
         )}
+      </section>
 
-        {tab === 'photo' && (
-          <div className="media-tab-section">
-            {eventStats.photos === 0 ? (
-              <p className="no-media-message">Aucune photo pour le moment.</p>
-            ) : (
-              <>
-                <p className="tab-summary">{eventStats.photos} photo(s) disponibles pour cet événement.</p>
-                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
-              </>
-            )}
-          </div>
-        )}
+      {isHost && (
+        <section style={{ marginTop: 'var(--stack-md)' }}>
+          <button type="button" className="btn-outline btn-primary-full btn-pill" onClick={() => setShowInvite(true)}>
+            <Icon name="link" size={20} /> Inviter des proches
+          </button>
+        </section>
+      )}
 
-        {tab === 'video' && (
-          <div className="media-tab-section">
-            {eventStats.videos === 0 ? (
-              <p className="no-media-message">Aucune vidéo pour le moment.</p>
-            ) : (
-              <>
-                <p className="tab-summary">{eventStats.videos} vidéo(s) disponibles pour cet événement.</p>
-                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
-              </>
-            )}
+      {guests.length > 0 && (
+        <section style={{ marginTop: 'var(--stack-lg)' }}>
+          <div className="section-header-row">
+            <h3 className="section-title" style={{ color: 'var(--primary)' }}>Participants</h3>
+            <Link to={`/events/${event.id}/participants`} className="font-label" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
+              Voir tout ({guests.length})
+            </Link>
           </div>
-        )}
-
-        {tab === 'stats' && (
-          <div className="stats-section">
-            <div className="stats-hero-grid">
-              <div className="stat-hero-card pink">
-                <span className="stat-hero-number">{guests.length}</span>
-                <span className="stat-hero-label">Participants</span>
-              </div>
-              <div className="stat-hero-card blue">
-                <span className="stat-hero-number">{eventStats.total}</span>
-                <span className="stat-hero-label">Médias total</span>
-              </div>
-            </div>
-            <div className="stats-grid" style={{ marginTop: 16 }}>
-              <div className="stat-card">
-                <span style={{ fontSize: '1.5rem' }}>📷</span>
-                <strong>{eventStats.photos}</strong>
-                <span>Photos</span>
-              </div>
-              <div className="stat-card">
-                <span style={{ fontSize: '1.5rem' }}>🎥</span>
-                <strong>{eventStats.videos}</strong>
-                <span>Vidéos</span>
-              </div>
-              <div className="stat-card">
-                <span style={{ fontSize: '1.5rem' }}>🎵</span>
-                <strong>{eventStats.audios}</strong>
-                <span>Audios</span>
-              </div>
-            </div>
-            <div className="navigation-buttons">
-              <Link to={`/events/${event.id}/participants`} className="button button-secondary">Voir les participants</Link>
-            </div>
-          </div>
-        )}
-
-        {tab === 'invite' && (
-          <div className="invite-section">
-            <h3>Inviter des participants</h3>
-            <p className="auth-subtitle">Partagez ce lien ou ce QR code</p>
-            <div className="invite-code-box">
-              <span className="invite-label">Code d'accès</span>
-              <strong className="invite-code">{event.accessCode}</strong>
-            </div>
-            <div className="invite-url-box">
-              <span className="invite-url">{inviteUrl}</span>
-              <button onClick={() => navigator.clipboard.writeText(inviteUrl)}>Copier</button>
-            </div>
-            <div className="qr-wrapper">
-              <QRCodeSVG value={inviteUrl} size={200} />
-            </div>
-          </div>
-        )}
-
-        {tab === 'audio' && isHost && (
-          <div className="media-tab-section">
-            {eventStats.audios === 0 ? (
-              <p className="no-media-message">Aucun message audio pour le moment.</p>
-            ) : (
-              <>
-                <p className="tab-summary">{eventStats.audios} message(s) audio disponibles.</p>
-                <Link to={`/events/${event.id}/media`} className="button">Voir tous les médias</Link>
-              </>
-            )}
-          </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   );
 }

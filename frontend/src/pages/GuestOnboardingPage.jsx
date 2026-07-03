@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
+import Icon from '../components/Icon';
 
 export default function GuestOnboardingPage() {
   const { code } = useParams();
   const { authUser, signIn, signUp, joinEvent, guestEvents, setGuest, setEvent, userProfile } = useApp();
   const navigate = useNavigate();
-  const [step, setStep] = useState('loading'); // loading | login | form
+  const [step, setStep] = useState('loading');
   const [authMode, setAuthMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,16 +18,14 @@ export default function GuestOnboardingPage() {
   useEffect(() => {
     if (!authUser) { setStep('login'); return; }
 
-    // Already joined this event → go directly to home
     const existing = guestEvents.find((e) => e.event?.accessCode === code?.toUpperCase());
     if (existing) {
       setGuest(existing.guest);
       setEvent(existing.event);
-      navigate('/events');
+      navigate(`/events/${existing.event.id}`);
       return;
     }
 
-    // Pre-fill from existing profile
     setForm({
       firstName: userProfile?.firstName || '',
       lastName: userProfile?.lastName || '',
@@ -60,29 +59,38 @@ export default function GuestOnboardingPage() {
     setStep('loading');
     const result = await joinEvent({ code: code.toUpperCase(), ...form });
     if (!result.success) { setError(result.error); setStep('form'); return; }
-    navigate('/guest/home');
+    navigate('/events');
   };
 
-  if (step === 'loading') return <div className="auth-page"><p>Chargement...</p></div>;
+  if (step === 'loading') {
+    return (
+      <div className="page-main-auth">
+        <p className="welcome-subtitle">Chargement...</p>
+      </div>
+    );
+  }
 
   if (step === 'login') {
     return (
-      <div className="auth-page">
+      <div className="page-main-auth">
         <div className="auth-card">
-          <div className="auth-logo">💍</div>
-          <h2>Vous êtes invité !</h2>
+          <div className="auth-logo"><Icon name="favorite" size={28} fill /></div>
+          <h1 style={{ fontSize: 24 }}>Vous êtes invité !</h1>
           <p className="auth-subtitle">
-            {authMode === 'login' ? 'Connectez-vous pour rejoindre l’événement' : 'Créez un compte pour rejoindre l’événement'}
+            Code : <strong>{code?.toUpperCase()}</strong>
+          </p>
+          <p className="auth-subtitle">
+            {authMode === 'login' ? 'Connectez-vous pour rejoindre l\'événement' : 'Créez un compte pour rejoindre l\'événement'}
           </p>
           <form onSubmit={handleAuth}>
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required />
             {error && <p className="message error">{error}</p>}
-            <button type="submit" disabled={authLoading}>
+            <button type="submit" className="btn-primary btn-primary-full" disabled={authLoading}>
               {authLoading ? '...' : authMode === 'login' ? 'Se connecter' : 'Créer le compte'}
             </button>
           </form>
-          <button className="btn-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(''); }}>
+          <button type="button" className="btn-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(''); }}>
             {authMode === 'login' ? 'Pas de compte ? Créer un compte' : 'Déjà un compte ? Se connecter'}
           </button>
         </div>
@@ -91,17 +99,25 @@ export default function GuestOnboardingPage() {
   }
 
   return (
-    <div className="auth-page">
-      <div className="setup-card">
-        <div className="auth-logo">👋</div>
-        <h2>Quelques infos avant de commencer</h2>
-        <p className="auth-subtitle">Ces informations aideront les organisateurs à vous identifier</p>
+    <div className="page-main-auth">
+      <div className="auth-card" style={{ textAlign: 'left', maxWidth: 440 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div className="auth-logo"><Icon name="waving_hand" size={28} /></div>
+          <h1 style={{ fontSize: 24, textAlign: 'center' }}>Quelques infos</h1>
+          <p className="auth-subtitle" style={{ textAlign: 'center' }}>Ces informations aideront les organisateurs à vous identifier</p>
+        </div>
         <form onSubmit={handleJoin}>
-          <label>Prénom *<input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required /></label>
-          <label>Nom *<input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required /></label>
-          <label>Téléphone<input value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" /></label>
-          <label>Vous êtes...
-            <select value={form.relation} onChange={setField('relation')}>
+          <label className="form-label">Prénom *
+            <input className="form-input" value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required />
+          </label>
+          <label className="form-label">Nom *
+            <input className="form-input" value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required />
+          </label>
+          <label className="form-label">Téléphone
+            <input className="form-input" value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" />
+          </label>
+          <label className="form-label">Vous êtes...
+            <select className="form-input" value={form.relation} onChange={setField('relation')}>
               <option value="">Sélectionner</option>
               <option value="famille">Famille</option>
               <option value="ami">Ami(e)</option>
@@ -110,7 +126,7 @@ export default function GuestOnboardingPage() {
             </select>
           </label>
           {error && <p className="message error">{error}</p>}
-          <button type="submit">Rejoindre l'événement 🎉</button>
+          <button type="submit" className="btn-primary btn-primary-full">Rejoindre l'événement</button>
         </form>
       </div>
     </div>

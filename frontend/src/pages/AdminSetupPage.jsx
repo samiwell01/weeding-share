@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
+import Icon from '../components/Icon';
 
 export default function AdminSetupPage() {
-  const { authUser, event, loadEventById, createWedding, updateWedding, setEvent } = useApp();
+  const { authUser, loadEventById, createWedding, updateWedding, setEvent } = useApp();
   const { id: eventId } = useParams();
   const editing = Boolean(eventId);
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
     description: '',
-    category: '',
+    category: 'Mariage',
     date: '',
     time: '',
     venueName: '',
@@ -21,7 +22,8 @@ export default function AdminSetupPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authUser || !editing) return;
+    if (!authUser) { navigate('/login'); return; }
+    if (!editing) return;
     loadEventById(eventId).then((existing) => {
       if (!existing) {
         navigate('/events');
@@ -30,7 +32,7 @@ export default function AdminSetupPage() {
       setForm({
         name: existing.name || '',
         description: existing.description || '',
-        category: existing.category || '',
+        category: existing.category || 'Mariage',
         date: existing.date || '',
         time: existing.time || '',
         venueName: existing.venueName || '',
@@ -44,7 +46,7 @@ export default function AdminSetupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name) { setError("Le nom de l’événement est requis."); return; }
+    if (!form.name) { setError("Le nom de l'événement est requis."); return; }
     setLoading(true);
     const result = editing
       ? await updateWedding(eventId, form)
@@ -59,42 +61,126 @@ export default function AdminSetupPage() {
     navigate(`/events/${result.event.id}`);
   };
 
-  if (!authUser) { navigate('/login'); return null; }
+  if (!authUser) return null;
+
+  const defaultCover = 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=900&q=70';
 
   return (
-    <div className="auth-page">
-      <div className="setup-card">
-        <h2>{editing ? "Modifier l’événement" : "Créer un événement"}</h2>
-        <p className="auth-subtitle">Renseignez les informations de votre événement</p>
-        <form onSubmit={handleSubmit}>
-          <label>Nom de l'événement *
-            <input value={form.name} onChange={set('name')} placeholder="ex: Soirée Anniversaire" required />
-          </label>
-          <label>Description
-            <textarea value={form.description} onChange={set('description')} placeholder="Décrivez l'événement" rows={4} />
-          </label>
-          <label>Catégorie
-            <input value={form.category} onChange={set('category')} placeholder="ex: Mariage, Anniversaire, Réunion" />
-          </label>
-          <label>Photo de couverture (URL)
-            <input value={form.coverUrl} onChange={set('coverUrl')} placeholder="https://..." />
-          </label>
-          <label>Date
-            <input type="date" value={form.date} onChange={set('date')} />
-          </label>
-          <label>Heure
-            <input type="time" value={form.time} onChange={set('time')} />
-          </label>
-          <label>Lieu (nom)
-            <input value={form.venueName} onChange={set('venueName')} placeholder="ex: Southern Grace" />
-          </label>
-          <label>Adresse
-            <input value={form.venueAddress} onChange={set('venueAddress')} placeholder="ex: 8545 Collienville Arlington Rd" />
-          </label>
-          {error && <p className="message error">{error}</p>}
-          <button type="submit" disabled={loading}>{loading ? (editing ? 'Mise à jour...' : 'Création...') : (editing ? 'Enregistrer' : "Créer l'événement")}</button>
-        </form>
+    <div className="page-main-narrow">
+      <div style={{ textAlign: 'center', marginBottom: 'var(--stack-lg)' }}>
+        <h2 className="welcome-title" style={{ color: 'var(--primary)' }}>
+          {editing ? "Modifier l'événement" : 'Créer un événement'}
+        </h2>
+        <p className="welcome-subtitle">Commencez à capturer vos moments précieux ensemble.</p>
       </div>
+
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label className="form-label" htmlFor="coverUrl">Photo de couverture</label>
+          <div className="memory-frame cover-uploader">
+            <div className="cover-uploader-inner">
+              <img src={form.coverUrl || defaultCover} alt="" />
+              <div className="cover-uploader-content">
+                <Icon name="add_a_photo" size={36} />
+                <span>Ajouter une photo</span>
+              </div>
+            </div>
+          </div>
+          <input
+            id="coverUrl"
+            className="form-input"
+            style={{ marginTop: 8 }}
+            value={form.coverUrl}
+            onChange={set('coverUrl')}
+            placeholder="URL de la photo de couverture"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="event_name">Nom de l'événement *</label>
+          <input
+            id="event_name"
+            className="form-input"
+            value={form.name}
+            onChange={set('name')}
+            placeholder="ex: Sophie & Marc"
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="description">Description</label>
+          <textarea
+            id="description"
+            className="form-textarea"
+            value={form.description}
+            onChange={set('description')}
+            placeholder="Décrivez votre événement..."
+            rows={4}
+          />
+        </div>
+
+        <div className="form-row-2 form-group">
+          <div>
+            <label className="form-label" htmlFor="event_date">Date</label>
+            <input id="event_date" type="date" className="form-input" value={form.date} onChange={set('date')} />
+          </div>
+          <div>
+            <label className="form-label" htmlFor="event_category">Catégorie</label>
+            <div className="form-select-wrap">
+              <select id="event_category" className="form-input" value={form.category} onChange={set('category')}>
+                <option value="Mariage">Mariage</option>
+                <option value="Anniversaire">Anniversaire</option>
+                <option value="Baby Shower">Baby Shower</option>
+                <option value="Réunion">Réunion</option>
+                <option value="Autre">Autre</option>
+              </select>
+              <Icon name="expand_more" />
+            </div>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="event_location">Lieu</label>
+          <div className="form-input-with-icon">
+            <Icon name="location_on" />
+            <input
+              id="event_location"
+              className="form-input"
+              value={form.venueName}
+              onChange={set('venueName')}
+              placeholder="Nom du lieu ou ville"
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="venueAddress">Adresse</label>
+          <input
+            id="venueAddress"
+            className="form-input"
+            value={form.venueAddress}
+            onChange={set('venueAddress')}
+            placeholder="Adresse complète"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label" htmlFor="time">Heure</label>
+          <input id="time" type="time" className="form-input" value={form.time} onChange={set('time')} />
+        </div>
+
+        {error && <p className="message error">{error}</p>}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 16, paddingBottom: 48 }}>
+          <button type="submit" className="btn-primary btn-primary-full" disabled={loading}>
+            {loading ? '...' : editing ? 'Enregistrer' : "Créer l'événement"}
+          </button>
+          <button type="button" className="btn-outline btn-primary-full" onClick={() => navigate('/events')}>
+            Annuler
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

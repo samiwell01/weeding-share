@@ -12,8 +12,7 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // If already logged in, go to home
-    if (authUser) navigate('/guest/home');
+    if (authUser) navigate('/events');
   }, [authUser]);
 
   const handleSubmit = async (e) => {
@@ -31,11 +30,11 @@ export default function AdminLoginPage() {
       setError('Compte créé ! Connectez-vous maintenant.');
       return;
     }
-    navigate('/guest/home');
+    navigate('/events');
   };
 
   return (
-    <div className="auth-page">
+    <div className="page-main-auth">
       <div className="auth-card">
         <div className="auth-logo">T</div>
         <h1>Tsiarhoom</h1>
@@ -46,11 +45,11 @@ export default function AdminLoginPage() {
           <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
           <input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required />
           {error && <p className="message error">{error}</p>}
-          <button type="submit" disabled={loading}>
+          <button type="submit" className="btn-primary btn-primary-full" disabled={loading}>
             {loading ? '...' : mode === 'login' ? 'Se connecter' : 'Créer le compte'}
           </button>
         </form>
-        <button className="btn-switch" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
+        <button type="button" className="btn-switch" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
           {mode === 'login' ? 'Pas encore de compte ? Créer un compte' : 'Déjà un compte ? Se connecter'}
         </button>
       </div>

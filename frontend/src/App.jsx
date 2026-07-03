@@ -24,7 +24,7 @@ function HomeRedirect() {
 
 function AppRoutes() {
   return (
-    <div className="app-shell">
+    <>
       <Navigation />
       <main>
         <Routes>
@@ -46,7 +46,7 @@ function AppRoutes() {
           <Route path="*" element={<HomeRedirect />} />
         </Routes>
       </main>
-    </div>
+    </>
   );
 }
 
