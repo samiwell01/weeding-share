@@ -288,21 +288,25 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(500).json({ error: 'Impossible de téléverser le fichier.' });
   }
 
-  const { data: publicUrlData, error: publicUrlError } = supabase.storage
-    .from(bucketName)
-    .getPublicUrl(storagePath);
+  const publicUrlResponse = supabase.storage.from(bucketName).getPublicUrl(storagePath);
+  const publicUrl = publicUrlResponse?.publicURL || publicUrlResponse?.data?.publicUrl || publicUrlResponse?.data?.publicURL;
 
-  if (publicUrlError) {
-    console.error('Supabase public URL error', publicUrlError);
-    return res.status(500).json({ error: 'Impossible de récupérer l’URL du fichier.' });
+  if (!publicUrl) {
+    console.error('Supabase public URL error', publicUrlResponse);
+    return res.status(500).json({ error: 'Impossible de récupérer l’URL publique du fichier.' });
   }
 
   try {
-    const entry = await createMediaRecord(guestId, eventId, type, req.file.originalname, publicUrlData.publicUrl);
+    const entry = await createMediaRecord(guestId, eventId, type, req.file.originalname, publicUrl);
     return res.status(201).json({ media: entry });
   } catch (error) {
     console.error('createMediaRecord error', error);
-    return res.status(500).json({ error: 'Impossible d’enregistrer le média.' });
+    if (error.message === 'INVALID_SUPABASE_KEY') {
+      return res.status(500).json({
+        error: 'Supabase invalide : vérifiez que SUPABASE_SERVICE_ROLE_KEY est une service role key et non la clé publique anon.',
+      });
+    }
+    return res.status(500).json({ error: error.message || 'Impossible d’enregistrer le média.' });
   }
 });
 
