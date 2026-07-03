@@ -152,10 +152,6 @@ export default function WeddingInfoPage() {
       </section>
 
       <section className="action-grid">
-        <Link to={`/events/${event.id}/upload`} className="action-grid-btn primary">
-          <Icon name="add_circle" size={32} />
-          Ajouter
-        </Link>
         <Link to={`/events/${event.id}/media`} className="action-grid-btn secondary">
           <Icon name="photo_library" size={32} style={{ color: 'var(--primary)' }} />
           Mes Médias
@@ -170,6 +166,10 @@ export default function WeddingInfoPage() {
               <Icon name="settings" size={32} style={{ color: 'var(--primary)' }} />
               Modifier
             </Link>
+            <button type="button" className="action-grid-btn secondary" onClick={() => setShowInvite(true)}>
+              <Icon name="link" size={32} style={{ color: 'var(--primary)' }} />
+              Inviter
+            </button>
           </>
         ) : (
           <button type="button" className="action-grid-btn secondary" onClick={() => navigate('/events')}>
@@ -178,14 +178,6 @@ export default function WeddingInfoPage() {
           </button>
         )}
       </section>
-
-      {isHost && (
-        <section style={{ marginTop: 'var(--stack-md)' }}>
-          <button type="button" className="btn-outline btn-primary-full btn-pill" onClick={() => setShowInvite(true)}>
-            <Icon name="link" size={20} /> Inviter des proches
-          </button>
-        </section>
-      )}
 
       {guests.length > 0 && (
         <section style={{ marginTop: 'var(--stack-lg)' }}>
@@ -197,6 +189,13 @@ export default function WeddingInfoPage() {
           </div>
         </section>
       )}
+
+      {/* FAB Upload — bouton rond + en bas à droite */}
+      <Link to={`/events/${event.id}/upload`} className="btn-fab-upload" aria-label="Ajouter un média">
+        <Icon name="add" size={32} />
+      </Link>
+
+      {toast && <div className="toast" style={{ opacity: 1 }}>{toast}</div>}
     </div>
   );
 }

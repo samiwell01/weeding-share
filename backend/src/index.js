@@ -219,6 +219,21 @@ async function guestHasCorrectEvent(guestId, eventId) {
 
 // ─── ROUTES ──────────────────────────────────────────────────────────────────
 
+// Upload cover image for event
+app.post('/upload-cover', upload.single('file'), async (req, res) => {
+  const { authUserId } = req.body;
+  if (!req.file || !authUserId) return res.status(400).json({ error: 'file et authUserId requis.' });
+  const storagePath = `covers/${authUserId}/${Date.now()}-${req.file.originalname}`;
+  const { error: storageError } = await supabase.storage
+    .from(bucketName)
+    .upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+  if (storageError) return res.status(500).json({ error: storageError.message });
+  const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+  const { signedURL, error: signedError } = await supabase.storage.from(bucketName).createSignedUrl(storagePath, TEN_YEARS);
+  if (signedError || !signedURL) return res.status(500).json({ error: "Impossible de récupérer l'URL." });
+  return res.json({ url: signedURL });
+});
+
 app.get('/health', async (req, res) => {
   if (!useDb) return res.status(500).json({ status: 'error', message: 'Supabase not configured' });
   const { data, error } = await supabase.from('events').select('id').limit(1);
