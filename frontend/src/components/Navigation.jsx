@@ -32,7 +32,6 @@ export default function Navigation() {
               avatarUrl={userProfile?.avatarUrl}
             />
           </Link>
-          <button className="nav-signout" onClick={signOut}>Déconnexion</button>
         </div>
       </nav>
       <nav className="main-nav bottom-nav">

@@ -73,8 +73,21 @@ export function AppProvider({ children }) {
     if (!authUserId) return;
     const res = await fetch(`${API_URL}/user/profile/${authUserId}`);
     const data = await res.json();
-    if (data.profile) setUserProfile(data.profile);
-    return data.profile || null;
+    if (data.profile) {
+      setUserProfile(data.profile);
+      return data.profile;
+    }
+
+    const { data: authUserData } = await supabase.auth.getUser();
+    const authUserProfile = authUserData?.user ? {
+      firstName: authUserData.user.user_metadata?.firstName || '',
+      lastName: authUserData.user.user_metadata?.lastName || '',
+      email: authUserData.user.email || '',
+      phone: authUserData.user.user_metadata?.phone || '',
+      avatarUrl: authUserData.user.user_metadata?.avatarUrl || '',
+    } : null;
+    if (authUserProfile) setUserProfile(authUserProfile);
+    return authUserProfile;
   };
 
   const updateUserProfile = async (fields) => {
@@ -86,6 +99,12 @@ export function AppProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) return { success: false, error: data.error };
+
+    const { error: authError } = await supabase.auth.updateUser({ data: fields });
+    if (authError) {
+      console.warn('Failed to update auth metadata', authError.message);
+    }
+
     setUserProfile((p) => ({ ...p, ...fields }));
     return { success: true };
   };
@@ -229,7 +248,9 @@ export function AppProvider({ children }) {
     const url = eventId ? `${API_URL}/guests?eventId=${eventId}` : `${API_URL}/guests`;
     const res = await fetch(url);
     const data = await res.json();
-    setGuests(data.guests || []);
+    const list = data.guests || [];
+    setGuests(list);
+    return list;
   };
 
   const loadGuestMedia = async (guestId) => {

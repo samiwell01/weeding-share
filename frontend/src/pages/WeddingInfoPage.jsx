@@ -90,6 +90,7 @@ export default function WeddingInfoPage() {
             </div>
             <div className="navigation-buttons">
               <Link to={`/events/${event.id}/media`} className="button">📸 Mes médias</Link>
+              <Link to={`/events/${event.id}/upload`} className="button">📤 Ajouter</Link>
               <Link to={`/events/${event.id}/participants`} className="button button-secondary">👥 Participants ({guests.length})</Link>
               {isHost && <Link to={`/events/${event.id}/edit`} className="button button-secondary">✏️ Modifier</Link>}
             </div>

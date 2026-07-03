@@ -7,24 +7,55 @@ import LoadingOverlay from '../components/LoadingOverlay';
 export default function MyMediaPage() {
   const { id: eventId } = useParams();
   const navigate = useNavigate();
-  const { authUser, guest, setGuest, guestEvents, media, loadMyMedia, deleteMedia, message } = useApp();
+  const {
+    authUser,
+    guest,
+    setGuest,
+    guestEvents,
+    guests,
+    loadGuests,
+    media,
+    loadMyMedia,
+    deleteMedia,
+    message,
+  } = useApp();
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const [pageLoading, setPageLoading] = useState(true);
 
   const viewable = media.filter((m) => m.type === 'photo' || m.type === 'video');
 
   useEffect(() => {
-    if (!authUser) { navigate('/login'); return; }
-    const entry = guestEvents.find((e) => e.event?.id === eventId);
-    if (entry?.guest) {
-      setGuest(entry.guest);
-      loadMyMedia(entry.guest.id).then(() => setPageLoading(false));
-    } else if (guest) {
-      loadMyMedia(guest.id).then(() => setPageLoading(false));
-    } else {
-      setPageLoading(false);
+    if (!authUser) {
+      navigate('/login');
+      return;
     }
-  }, [authUser, eventId, guestEvents]);
+
+    const initialize = async () => {
+      const entry = guestEvents.find((e) => e.event?.id === eventId);
+      if (entry?.guest) {
+        setGuest(entry.guest);
+        await loadMyMedia(entry.guest.id);
+        setPageLoading(false);
+        return;
+      }
+
+      if (guest?.eventId === eventId) {
+        await loadMyMedia(guest.id);
+        setPageLoading(false);
+        return;
+      }
+
+      const list = await loadGuests(eventId);
+      const hostGuest = list.find((g) => g.authUserId === authUser.id);
+      if (hostGuest) {
+        setGuest(hostGuest);
+        await loadMyMedia(hostGuest.id);
+      }
+      setPageLoading(false);
+    };
+
+    initialize();
+  }, [authUser, eventId, guest, guestEvents, loadGuests, loadMyMedia, navigate, setGuest]);
 
   if (pageLoading) return <LoadingOverlay message="Chargement des médias…" />;
 

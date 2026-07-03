@@ -24,7 +24,10 @@ export default function UserProfilePage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!authUser) { navigate('/admin'); return; }
+    if (!authUser) {
+      navigate('/login');
+      return;
+    }
     if (!userProfile) {
       loadUserProfile(authUser.id);
       return;
@@ -35,7 +38,7 @@ export default function UserProfilePage() {
       phone: userProfile.phone || '',
       avatarUrl: userProfile.avatarUrl || '',
     });
-  }, [authUser, userProfile]);
+  }, [authUser, userProfile, loadUserProfile, navigate]);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 

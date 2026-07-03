@@ -39,6 +39,7 @@ function App() {
               <Route path="/events/create" element={<AdminSetupPage />} />
               <Route path="/events/:id/edit" element={<AdminSetupPage />} />
               <Route path="/events/join/:code" element={<GuestOnboardingPage />} />
+              <Route path="/events/:id/upload" element={<UploadPage />} />
               <Route path="/events/:id" element={<WeddingInfoPage />} />
               <Route path="/events/:id/media" element={<MyMediaPage />} />
               <Route path="/events/:id/participants" element={<GuestsPage />} />

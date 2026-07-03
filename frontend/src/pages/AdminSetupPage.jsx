@@ -7,7 +7,16 @@ export default function AdminSetupPage() {
   const { id: eventId } = useParams();
   const editing = Boolean(eventId);
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', description: '', category: '', date: '', time: '', venueName: '', venueAddress: '' });
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    category: '',
+    date: '',
+    time: '',
+    venueName: '',
+    venueAddress: '',
+    coverUrl: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +35,7 @@ export default function AdminSetupPage() {
         time: existing.time || '',
         venueName: existing.venueName || '',
         venueAddress: existing.venueAddress || '',
+        coverUrl: existing.coverUrl || '',
       });
     });
   }, [authUser, editing, eventId]);
@@ -65,6 +75,9 @@ export default function AdminSetupPage() {
           </label>
           <label>Catégorie
             <input value={form.category} onChange={set('category')} placeholder="ex: Mariage, Anniversaire, Réunion" />
+          </label>
+          <label>Photo de couverture (URL)
+            <input value={form.coverUrl} onChange={set('coverUrl')} placeholder="https://..." />
           </label>
           <label>Date
             <input type="date" value={form.date} onChange={set('date')} />
