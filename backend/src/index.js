@@ -12,22 +12,84 @@ const upload = multer({ storage: multer.memoryStorage() });
 const PORT = process.env.PORT || 4000;
 const frontendPath = path.join(__dirname, '../../frontend/dist');
 const bucketName = process.env.SUPABASE_BUCKET_NAME || 'wedding-media';
-const useDb = !!supabase;
+const useDb = Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(frontendPath));
 
-const fallbackEvents = [{ id: 'event-1', name: 'Wedding 2026', accessCode: 'MARIAGE2026' }];
-const fallbackGuests = [
-  { id: 'guest-1', eventId: 'event-1', firstName: 'Jean', lastName: 'Rakoto', role: 'guest', is_admin: false },
-  { id: 'admin-1', eventId: 'event-1', firstName: 'Marie', lastName: 'Randria', role: 'admin', is_admin: true },
-];
-const fallbackMedia = [];
+function mapEvent(event) {
+  if (!event) return null;
+  return {
+    id: event.id,
+    name: event.name,
+    accessCode: event.access_code,
+    createdAt: event.created_at,
+  };
+}
+
+function mapGuest(guest) {
+  if (!guest) return null;
+  return {
+    id: guest.id,
+    eventId: guest.event_id,
+    firstName: guest.first_name,
+    lastName: guest.last_name,
+    role: guest.role,
+    isAdmin: guest.is_admin,
+    createdAt: guest.created_at,
+  };
+}
+
+function mapMedia(item) {
+  if (!item) return null;
+  return {
+    id: item.id,
+    guestId: item.guest_id,
+    eventId: item.event_id,
+    type: item.type,
+    fileName: item.file_name,
+    fileUrl: item.file_url,
+    createdAt: item.created_at,
+  };
+}
+
+async function ensureInitialData() {
+  if (!useDb) {
+    console.log('Supabase not configured, skipping initial data setup.');
+    return;
+  }
+
+  const { data: existingEvent, error: eventError } = await supabase
+    .from('events')
+    .select('id')
+    .eq('access_code', 'MARIAGE2026')
+    .limit(1)
+    .single();
+
+  if (eventError && eventError.code !== 'PGRST116') {
+    console.error('Supabase initial event lookup error', eventError);
+    return;
+  }
+
+  if (!existingEvent) {
+    const { data: createdEvent, error: createError } = await supabase
+      .from('events')
+      .insert([{ name: 'Wedding 2026', access_code: 'MARIAGE2026' }])
+      .single();
+
+    if (createError) {
+      console.error('Supabase event seed error', createError);
+      return;
+    }
+
+    console.log('Supabase seeded initial event:', createdEvent.id);
+  }
+}
 
 async function findEventByCode(code) {
   if (!useDb) {
-    return fallbackEvents.find((event) => event.accessCode === code) || null;
+    return null;
   }
 
   const { data, error } = await supabase.from('events').select('*').eq('access_code', code).limit(1).single();
@@ -35,58 +97,46 @@ async function findEventByCode(code) {
     console.error('Supabase event lookup error', error);
     return null;
   }
-  return data;
+  return mapEvent(data);
 }
 
-async function createGuest(eventId, firstName, lastName, isAdmin = false) {
+async function createGuest(eventId, firstName, lastName) {
   if (!useDb) {
-    const guest = {
-      id: `guest-${Date.now()}`,
-      eventId,
-      firstName,
-      lastName,
-      role: isAdmin ? 'admin' : 'guest',
-      is_admin: Boolean(isAdmin),
-    };
-    fallbackGuests.push(guest);
-    return guest;
+    throw new Error('Supabase not configured');
   }
 
-  const role = isAdmin ? 'admin' : 'guest';
-  const { data, error } = await supabase.from('guests').insert([{ event_id: eventId, first_name: firstName, last_name: lastName, role, is_admin: isAdmin }]).single();
+  const { data, error } = await supabase
+    .from('guests')
+    .insert([{ event_id: eventId, first_name: firstName, last_name: lastName, role: 'guest', is_admin: false }])
+    .single();
+
   if (error) {
     console.error('Supabase guest insert error', error);
     throw error;
   }
-  return data;
+  return mapGuest(data);
 }
 
 async function createMediaRecord(guestId, eventId, type, fileName, fileUrl) {
   if (!useDb) {
-    const entry = {
-      id: `media-${Date.now()}`,
-      guestId,
-      eventId,
-      type,
-      file_name: fileName,
-      file_url: fileUrl,
-      created_at: new Date().toISOString(),
-    };
-    fallbackMedia.push(entry);
-    return entry;
+    throw new Error('Supabase not configured');
   }
 
-  const { data, error } = await supabase.from('media').insert([{ guest_id: guestId, event_id: eventId, type, file_name: fileName, file_url: fileUrl }]).single();
+  const { data, error } = await supabase
+    .from('media')
+    .insert([{ guest_id: guestId, event_id: eventId, type, file_name: fileName, file_url: fileUrl }])
+    .single();
+
   if (error) {
     console.error('Supabase media insert error', error);
     throw error;
   }
-  return data;
+  return mapMedia(data);
 }
 
 async function getGuestMedia(guestId) {
   if (!useDb) {
-    return fallbackMedia.filter((item) => item.guestId === guestId);
+    return [];
   }
 
   const { data, error } = await supabase.from('media').select('*').eq('guest_id', guestId).order('created_at', { ascending: false });
@@ -94,12 +144,12 @@ async function getGuestMedia(guestId) {
     console.error('Supabase media select error', error);
     return [];
   }
-  return data;
+  return data.map(mapMedia);
 }
 
 async function getAllGuests() {
   if (!useDb) {
-    return fallbackGuests;
+    return [];
   }
 
   const { data, error } = await supabase.from('guests').select('*').order('created_at', { ascending: true });
@@ -107,12 +157,12 @@ async function getAllGuests() {
     console.error('Supabase guests select error', error);
     return [];
   }
-  return data;
+  return data.map(mapGuest);
 }
 
 async function getGuestById(guestId) {
   if (!useDb) {
-    return fallbackGuests.find((item) => item.id === guestId) || null;
+    return null;
   }
 
   const { data, error } = await supabase.from('guests').select('*').eq('id', guestId).limit(1).single();
@@ -120,14 +170,12 @@ async function getGuestById(guestId) {
     console.error('Supabase guest select error', error);
     return null;
   }
-  return data;
+  return mapGuest(data);
 }
 
 async function deleteMediaRecord(mediaId, guestId) {
   if (!useDb) {
-    const index = fallbackMedia.findIndex((item) => item.id === mediaId && item.guestId === guestId);
-    if (index === -1) return null;
-    return fallbackMedia.splice(index, 1)[0];
+    return null;
   }
 
   const { data, error } = await supabase.from('media').delete().eq('id', mediaId).eq('guest_id', guestId).single();
@@ -135,28 +183,40 @@ async function deleteMediaRecord(mediaId, guestId) {
     console.error('Supabase media delete error', error);
     return null;
   }
-  return data;
+  return mapMedia(data);
 }
 
 async function guestHasCorrectEvent(guestId, eventId) {
   if (!useDb) {
-    return fallbackGuests.some((guest) => guest.id === guestId && guest.eventId === eventId);
+    return false;
   }
 
   const { data, error } = await supabase.from('guests').select('id').eq('id', guestId).eq('event_id', eventId).limit(1).single();
   if (error) {
-    console.error('Supabase guest event validation error', error);
+    if (error.code !== 'PGRST116') {
+      console.error('Supabase guest event validation error', error);
+    }
     return false;
   }
   return Boolean(data);
 }
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'wedding-share-backend', db: useDb ? 'supabase' : 'fallback' });
+app.get('/health', async (req, res) => {
+  if (!useDb) {
+    return res.status(500).json({ status: 'error', service: 'wedding-share-backend', db: 'none', message: 'Supabase environment variables are missing' });
+  }
+
+  const { data, error } = await supabase.from('events').select('id').limit(1);
+  if (error) {
+    return res.status(500).json({ status: 'error', db: 'supabase', error: error.message });
+  }
+
+  return res.json({ status: 'ok', service: 'wedding-share-backend', db: 'supabase', eventCount: data.length });
 });
 
+
 app.post('/join-event', async (req, res) => {
-  const { code, firstName, lastName, isAdmin } = req.body;
+  const { code, firstName, lastName } = req.body;
 
   if (!code || !firstName || !lastName) {
     return res.status(400).json({ error: 'Code, prénom et nom sont requis.' });
@@ -168,9 +228,10 @@ app.post('/join-event', async (req, res) => {
   }
 
   try {
-    const guest = await createGuest(event.id, firstName, lastName, Boolean(isAdmin));
+    const guest = await createGuest(event.id, firstName, lastName);
     return res.status(201).json({ guest, event });
   } catch (error) {
+    console.error('join-event error', error);
     return res.status(500).json({ error: 'Impossible de créer l’invité.' });
   }
 });
@@ -187,13 +248,33 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(403).json({ error: 'Invité non autorisé pour cet événement.' });
   }
 
-  const fileName = `${Date.now()}-${req.file.originalname}`;
-  const fileUrl = `https://example.com/${type}/${fileName}`;
+  const storagePath = `${eventId}/${guestId}/${Date.now()}-${req.file.originalname}`;
+  const { data: storageData, error: storageError } = await supabase.storage
+    .from(bucketName)
+    .upload(storagePath, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: true,
+    });
+
+  if (storageError) {
+    console.error('Supabase storage upload error', storageError);
+    return res.status(500).json({ error: 'Impossible de téléverser le fichier.' });
+  }
+
+  const { data: publicUrlData, error: publicUrlError } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(storagePath);
+
+  if (publicUrlError) {
+    console.error('Supabase public URL error', publicUrlError);
+    return res.status(500).json({ error: 'Impossible de récupérer l’URL du fichier.' });
+  }
 
   try {
-    const entry = await createMediaRecord(guestId, eventId, type, req.file.originalname, fileUrl);
+    const entry = await createMediaRecord(guestId, eventId, type, req.file.originalname, publicUrlData.publicUrl);
     return res.status(201).json({ media: entry });
   } catch (error) {
+    console.error('createMediaRecord error', error);
     return res.status(500).json({ error: 'Impossible d’enregistrer le média.' });
   }
 });
@@ -228,10 +309,17 @@ app.get('/guest/:id/media', async (req, res) => {
   return res.json({ media: items });
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
-});
-
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
+
+ensureInitialData()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to initialize backend:', error);
+    process.exit(1);
+  });
