@@ -194,10 +194,62 @@ button.button-secondary {
   border: 1px solid #d1d5db;
 }
 
-.message-box {
-  margin-top: 16px;
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
 }
 
-.message.error {
-  color: #b91c1c;
+.media-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9fafb;
 }
+
+.media-preview-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+  background: #e5e7eb;
+}
+
+.media-preview-audio {
+  width: 100%;
+  padding: 8px;
+}
+
+.media-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+}
+
+.media-card-name {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.media-card-footer button {
+  width: 100%;
+  padding: 6px;
+  font-size: 0.8rem;
+  background: #fee2e2;
+  color: #b91c1c;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.media-card-footer button:hover {
+  background: #fecaca;
+}
+

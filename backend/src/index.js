@@ -200,12 +200,25 @@ async function deleteMediaRecord(mediaId, guestId) {
     return null;
   }
 
-  const { data, error } = await supabase.from('media').delete().eq('id', mediaId).eq('guest_id', guestId).single();
+  const { data: existing, error: fetchError } = await supabase
+    .from('media')
+    .select('*')
+    .eq('id', mediaId)
+    .eq('guest_id', guestId)
+    .limit(1)
+    .single();
+
+  if (fetchError || !existing) {
+    console.error('Supabase media fetch before delete error', fetchError);
+    return null;
+  }
+
+  const { error } = await supabase.from('media').delete().eq('id', mediaId).eq('guest_id', guestId);
   if (error) {
     console.error('Supabase media delete error', error);
     return null;
   }
-  return mapMedia(data);
+  return mapMedia(existing);
 }
 
 async function guestHasCorrectEvent(guestId, eventId) {
@@ -288,13 +301,17 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     return res.status(500).json({ error: 'Impossible de téléverser le fichier.' });
   }
 
-  const publicUrlResponse = supabase.storage.from(bucketName).getPublicUrl(storagePath);
-  const publicUrl = publicUrlResponse?.publicURL || publicUrlResponse?.data?.publicUrl || publicUrlResponse?.data?.publicURL;
+  const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+  const { signedURL, error: signedError } = await supabase.storage
+    .from(bucketName)
+    .createSignedUrl(storagePath, TEN_YEARS);
 
-  if (!publicUrl) {
-    console.error('Supabase public URL error', publicUrlResponse);
-    return res.status(500).json({ error: 'Impossible de récupérer l’URL publique du fichier.' });
+  if (signedError || !signedURL) {
+    console.error('Supabase signed URL error', signedError || 'signedURL is null');
+    return res.status(500).json({ error: 'Impossible de récupérer l’URL du fichier.' });
   }
+
+  const publicUrl = signedURL;
 
   try {
     const entry = await createMediaRecord(guestId, eventId, type, req.file.originalname, publicUrl);

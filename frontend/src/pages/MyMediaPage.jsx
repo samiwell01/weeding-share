@@ -2,6 +2,19 @@ import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 
+function MediaPreview({ item }) {
+  if (item.type === 'photo') {
+    return <img src={item.fileUrl} alt={item.fileName} className="media-preview-img" />;
+  }
+  if (item.type === 'video') {
+    return <video src={item.fileUrl} controls className="media-preview-img" />;
+  }
+  if (item.type === 'audio') {
+    return <audio src={item.fileUrl} controls className="media-preview-audio" />;
+  }
+  return <span>{item.fileName}</span>;
+}
+
 export default function MyMediaPage() {
   const navigate = useNavigate();
   const { guest, media, loadMyMedia, deleteMedia, message } = useApp();
@@ -25,11 +38,14 @@ export default function MyMediaPage() {
       {media.length === 0 ? (
         <p>Aucun média pour le moment.</p>
       ) : (
-        <div className="media-list">
+        <div className="media-grid">
           {media.map((item) => (
-            <div key={item.id} className="media-item">
-              <span>{item.type} • {item.fileName}</span>
-              <button onClick={() => deleteMedia(item.id)}>Supprimer</button>
+            <div key={item.id} className="media-card">
+              <MediaPreview item={item} />
+              <div className="media-card-footer">
+                <span className="media-card-name">{item.fileName}</span>
+                <button onClick={() => deleteMedia(item.id)}>Supprimer</button>
+              </div>
             </div>
           ))}
         </div>

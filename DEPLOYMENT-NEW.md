@@ -43,8 +43,14 @@ Ajouter dans la section "Environment" :
 - `SUPABASE_URL` = `https://<your-project>.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY` = `<your-service-role-key>`
 - `SUPABASE_BUCKET_NAME` = `wedding-media`
+- `SUPABASE_S3_ACCESS_KEY` = `<your-s3-access-key>`
+- `SUPABASE_S3_SECRET_KEY` = `<your-s3-secret-key>`
+- `SUPABASE_S3_REGION` = `<your-s3-region>` (ex: `eu-west-1`)
+- `SUPABASE_S3_ENDPOINT` = `https://<your-project>.supabase.co/storage/v1/s3`
 
 > Important : utilisez la **service role key** fournie par Supabase et non la clé publique `anon`. La clé publique ne peut pas écrire sur des tables protégées par la row-level security.
+
+> Le bucket reste **privé**. Les fichiers sont accessibles via des signed URLs générées par le backend avec la service role key.
 
 ### 6. Lancer le déploiement
 - Cliquer sur **"Create Web Service"**
@@ -64,6 +70,30 @@ Ajouter dans la section "Environment" :
 4. Tester l'upload d'un fichier
 5. Vérifier que le fichier apparaît dans **"Mes souvenirs"**
 6. Tester la suppression du fichier
+
+## Configuration Supabase Storage (bucket privé)
+
+Le bucket reste **privé**, pas besoin de le rendre public. Le backend génère des signed URLs avec la service role key.
+
+### Récupérer les clés S3 Supabase
+
+1. Aller sur [https://supabase.com/dashboard](https://supabase.com/dashboard)
+2. Ouvrir ton projet
+3. Aller dans **Storage** (menu gauche)
+4. Cliquer sur **S3 Access Keys** (en haut à droite de la page Storage)
+5. Cliquer sur **New access key**
+6. Copier :
+   - `Access Key ID` → c'est ton `SUPABASE_S3_ACCESS_KEY`
+   - `Secret Access Key` → c'est ton `SUPABASE_S3_SECRET_KEY`
+7. La région et l'endpoint sont visibles sur cette même page :
+   - `Region` → ex: `eu-west-1`
+   - `Endpoint` → ex: `https://<project-ref>.supabase.co/storage/v1/s3`
+
+### Vérifier que le bucket existe
+
+1. Aller dans **Storage** > **Buckets**
+2. Vérifier que le bucket `wedding-media` existe
+3. S'il n'existe pas, cliquer sur **New bucket**, nommer `wedding-media`, laisser **privé** (ne pas cocher public)
 
 ## Troubleshooting
 

@@ -2,6 +2,19 @@ import { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 
+function MediaPreview({ item }) {
+  if (item.type === 'photo') {
+    return <img src={item.fileUrl} alt={item.fileName} className="media-preview-img" />;
+  }
+  if (item.type === 'video') {
+    return <video src={item.fileUrl} controls className="media-preview-img" />;
+  }
+  if (item.type === 'audio') {
+    return <audio src={item.fileUrl} controls className="media-preview-audio" />;
+  }
+  return <span>{item.fileName}</span>;
+}
+
 export default function GuestDetailPage() {
   const { id } = useParams();
   const { guests, selectedGuestMedia, loadGuestMedia } = useApp();
@@ -28,10 +41,13 @@ export default function GuestDetailPage() {
       {selectedGuestMedia.length === 0 ? (
         <p>Aucun média envoyé par cet invité.</p>
       ) : (
-        <div className="media-list">
+        <div className="media-grid">
           {selectedGuestMedia.map((item) => (
-            <div key={item.id} className="media-item">
-              <span>{item.type} • {item.fileName}</span>
+            <div key={item.id} className="media-card">
+              <MediaPreview item={item} />
+              <div className="media-card-footer">
+                <span className="media-card-name">{item.fileName}</span>
+              </div>
             </div>
           ))}
         </div>
