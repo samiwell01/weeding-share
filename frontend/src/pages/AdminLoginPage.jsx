@@ -37,10 +37,10 @@ export default function AdminLoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-logo">💍</div>
-        <h1>Wedding Share</h1>
+        <div className="auth-logo">T</div>
+        <h1>Tsiarhoom</h1>
         <p className="auth-subtitle">
-          {mode === 'login' ? 'Connectez-vous à votre compte' : 'Créer un nouveau compte'}
+          {mode === 'login' ? 'Connectez-vous à votre espace' : 'Créer un nouveau compte'}
         </p>
         <form onSubmit={handleSubmit}>
           <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />

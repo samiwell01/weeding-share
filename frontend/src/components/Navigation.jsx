@@ -13,6 +13,7 @@ export default function Navigation() {
   if (!authUser) {
     return (
       <nav className="main-nav header-nav">
+        <Link to="/login" className="brand-link">Tsiarhoom</Link>
         <Link to="/login">Connexion</Link>
       </nav>
     );
@@ -21,7 +22,8 @@ export default function Navigation() {
   return (
     <>
       <nav className="main-nav header-nav">
-        <Link to="/events">🏠 Événements</Link>
+        <Link to="/events" className="brand-link">Tsiarhoom</Link>
+        <Link to="/events">Événements</Link>
         <Link to="/events/create">➕ Créer</Link>
         <Link to="/events/join">🔗 Rejoindre</Link>
         <div className="nav-right-group">
