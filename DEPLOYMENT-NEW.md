@@ -34,7 +34,7 @@ Le frontend et le backend sont fusionnés dans un seul service Node.js :
 | **Region** | Choisir la région la plus proche |
 | **Branch** | `main` |
 | **Runtime** | `Node` |
-| **Build Command** | `npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend` |
+| **Build Command** | `npm install --prefix backend && npm install --prefix frontend --include=dev && npm run build --prefix frontend` |
 | **Start Command** | `npm start --prefix backend` |
 
 ### 5. Variables d'environnement

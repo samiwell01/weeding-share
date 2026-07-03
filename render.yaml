@@ -1,22 +1,12 @@
 services:
   - type: web
-    name: wedding-share-backend
+    name: wedding-share
     env: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
+    rootDir: .
+    buildCommand: npm install --prefix backend && npm install --prefix frontend --include=dev && npm run build --prefix frontend
+    startCommand: npm start --prefix backend
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-
-  - type: web
-    name: wedding-share-frontend
-    env: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_URL
-        value: https://wedding-share-backend.onrender.com
