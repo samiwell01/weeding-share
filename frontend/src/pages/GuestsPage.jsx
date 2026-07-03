@@ -20,7 +20,7 @@ export default function GuestsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authUser) { navigate('/admin'); return; }
+    if (!authUser) { navigate('/login'); return; }
     loadAdminWedding(authUser.id).then((e) => {
       if (e) loadGuests(e.id);
     });
@@ -38,7 +38,7 @@ export default function GuestsPage() {
       ) : (
         <div className="guests-grid">
           {guests.map((g) => (
-            <Link key={g.id} to={`/admin/guest/${g.id}`} className="guest-card">
+            <Link key={g.id} to={`/events/${event?.id}/participant/${g.id}`} className="guest-card">
               <GuestAvatar firstName={g.firstName} lastName={g.lastName} avatarUrl={g.avatarUrl} />
               <div className="guest-card-info">
                 <strong>{g.firstName} {g.lastName}</strong>
@@ -59,7 +59,7 @@ export default function GuestsPage() {
       )}
 
       <div className="navigation-buttons">
-        <Link to="/admin/wedding" className="button button-secondary">Retour</Link>
+        <Link to={`/events/${event?.id}`} className="button button-secondary">Retour</Link>
       </div>
     </div>
   );

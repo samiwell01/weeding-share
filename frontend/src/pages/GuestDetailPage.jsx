@@ -17,7 +17,7 @@ export default function GuestDetailPage() {
     return (
       <div className="card">
         <h2>Invité introuvable</h2>
-        <Link to="/admin/guests" className="button">Retour</Link>
+        <Link to="/events" className="button">Retour</Link>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function GuestDetailPage() {
           })}
         </div>
       )}
-      <Link to="/admin/guests" className="button">Retour</Link>
+      <Link to="/events" className="button">Retour</Link>
 
       {lightboxIndex !== null && (
         <Lightbox

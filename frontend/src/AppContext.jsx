@@ -93,7 +93,15 @@ export function AppProvider({ children }) {
   // ─── ADMIN WEDDING ─────────────────────────────────────────────────────────
 
   const loadAdminWedding = async (adminId) => {
-    const res = await fetch(`${API_URL}/admin/wedding?adminId=${adminId}`);
+    const res = await fetch(`${API_URL}/event/host/${adminId}`);
+    const data = await res.json();
+    if (data.event) setEvent(data.event);
+    return data.event || null;
+  };
+
+  const loadEventById = async (eventId) => {
+    if (!eventId) return null;
+    const res = await fetch(`${API_URL}/event/id/${eventId}`);
     const data = await res.json();
     if (data.event) setEvent(data.event);
     return data.event || null;
@@ -101,13 +109,13 @@ export function AppProvider({ children }) {
 
   const loadEventStats = async (eventId) => {
     if (!eventId) return;
-    const res = await fetch(`${API_URL}/admin/stats/${eventId}`);
+    const res = await fetch(`${API_URL}/event/${eventId}/stats`);
     const data = await res.json();
     setEventStats(data);
   };
 
   const createWedding = async (fields) => {
-    const res = await fetch(`${API_URL}/admin/wedding`, {
+    const res = await fetch(`${API_URL}/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -127,7 +135,7 @@ export function AppProvider({ children }) {
   };
 
   const updateWedding = async (id, fields) => {
-    const res = await fetch(`${API_URL}/admin/wedding/${id}`, {
+    const res = await fetch(`${API_URL}/event/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ adminId: authUser.id, ...fields }),
@@ -142,7 +150,7 @@ export function AppProvider({ children }) {
 
   const loadGuestEvents = async (authUserId) => {
     if (!authUserId) return [];
-    const res = await fetch(`${API_URL}/guest/events/${authUserId}`);
+    const res = await fetch(`${API_URL}/events/user/${authUserId}`);
     const data = await res.json();
     setGuestEvents(data.entries || []);
     return data.entries || [];
@@ -238,7 +246,7 @@ export function AppProvider({ children }) {
       eventStats, message, setMessage, loading,
       signUp, signIn, signOut, updatePassword,
       loadUserProfile, updateUserProfile,
-      loadAdminWedding, loadEventStats, createWedding, updateWedding,
+      loadAdminWedding, loadEventById, loadEventStats, createWedding, updateWedding,
       loadGuestEvents, joinEvent, checkAlreadyJoined,
       loadMyMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia,

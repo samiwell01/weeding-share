@@ -18,7 +18,7 @@ import LoadingOverlay from './components/LoadingOverlay';
 function HomeRedirect() {
   const { authUser, loading } = useApp();
   if (loading) return <LoadingOverlay message="Connexion en cours…" />;
-  return authUser ? <Navigate to="/guest/home" replace /> : <Navigate to="/admin" replace />;
+  return authUser ? <Navigate to="/events" replace /> : <Navigate to="/login" replace />;
 }
 
 function App() {
@@ -31,26 +31,26 @@ function App() {
             <Routes>
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-              {/* Single login for everyone */}
-              <Route path="/admin" element={<AdminLoginPage />} />
-              <Route path="/admin/setup" element={<AdminSetupPage />} />
-              <Route path="/admin/wedding" element={<WeddingInfoPage />} />
-              <Route path="/admin/dashboard" element={<DashboardPage />} />
-              <Route path="/admin/guests" element={<GuestsPage />} />
-              <Route path="/admin/guest/:id" element={<GuestDetailPage />} />
+              {/* Auth */}
+              <Route path="/login" element={<AdminLoginPage />} />
 
-              {/* Guest invite flow via QR/link */}
+              {/* Event administration */}
+              <Route path="/events" element={<GuestHomePage />} />
+              <Route path="/events/create" element={<AdminSetupPage />} />
+              <Route path="/events/:id/edit" element={<AdminSetupPage />} />
+              <Route path="/events/join/:code" element={<GuestOnboardingPage />} />
+              <Route path="/events/:id" element={<WeddingInfoPage />} />
+              <Route path="/events/:id/media" element={<MyMediaPage />} />
+              <Route path="/events/:id/participants" element={<GuestsPage />} />
+              <Route path="/events/:eventId/participant/:id" element={<GuestDetailPage />} />
+              <Route path="/events/:id/summary" element={<DashboardPage />} />
+
+              {/* Backward compatibility invite link */}
               <Route path="/join/:code" element={<GuestOnboardingPage />} />
-
-              {/* Main app (default after login) */}
-              <Route path="/guest/home" element={<GuestHomePage />} />
-              <Route path="/guest/upload" element={<UploadPage />} />
-              <Route path="/guest/media" element={<MyMediaPage />} />
 
               {/* Profile */}
               <Route path="/profile" element={<UserProfilePage />} />
 
-              {/* Default redirect */}
               <Route path="/" element={<HomeRedirect />} />
               <Route path="*" element={<HomeRedirect />} />
             </Routes>

@@ -22,7 +22,7 @@ export default function GuestOnboardingPage() {
     if (existing) {
       setGuest(existing.guest);
       setEvent(existing.event);
-      navigate('/guest/home');
+      navigate('/events');
       return;
     }
 
@@ -72,7 +72,7 @@ export default function GuestOnboardingPage() {
           <div className="auth-logo">💍</div>
           <h2>Vous êtes invité !</h2>
           <p className="auth-subtitle">
-            {authMode === 'login' ? 'Connectez-vous pour rejoindre le mariage' : 'Créez un compte pour rejoindre le mariage'}
+            {authMode === 'login' ? 'Connectez-vous pour rejoindre l’événement' : 'Créez un compte pour rejoindre l’événement'}
           </p>
           <form onSubmit={handleAuth}>
             <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -95,7 +95,7 @@ export default function GuestOnboardingPage() {
       <div className="setup-card">
         <div className="auth-logo">👋</div>
         <h2>Quelques infos avant de commencer</h2>
-        <p className="auth-subtitle">Ces informations aideront les mariés à vous identifier</p>
+        <p className="auth-subtitle">Ces informations aideront les organisateurs à vous identifier</p>
         <form onSubmit={handleJoin}>
           <label>Prénom *<input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required /></label>
           <label>Nom *<input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required /></label>
@@ -110,7 +110,7 @@ export default function GuestOnboardingPage() {
             </select>
           </label>
           {error && <p className="message error">{error}</p>}
-          <button type="submit">Rejoindre le mariage 🎉</button>
+          <button type="submit">Rejoindre l'événement 🎉</button>
         </form>
       </div>
     </div>

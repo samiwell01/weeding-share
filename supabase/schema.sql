@@ -17,6 +17,8 @@ create table if not exists events (
   id            uuid primary key default gen_random_uuid(),
   admin_id      uuid not null,                          -- references auth.users(id)
   name          text not null,
+  description   text,
+  category      text,
   access_code   text not null unique,
   date          date,
   time          time,

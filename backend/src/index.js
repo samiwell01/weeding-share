@@ -27,6 +27,8 @@ function mapEvent(e) {
     id: e.id,
     adminId: e.admin_id,
     name: e.name,
+    description: e.description,
+    category: e.category,
     accessCode: e.access_code,
     date: e.date,
     time: e.time,
@@ -99,6 +101,8 @@ async function createEvent(adminId, fields) {
     .insert([{
       admin_id: adminId,
       name: fields.name,
+      description: fields.description || null,
+      category: fields.category || null,
       access_code: accessCode,
       date: fields.date || null,
       time: fields.time || null,
@@ -117,6 +121,8 @@ async function updateEvent(id, adminId, fields) {
     .from('events')
     .update({
       name: fields.name,
+      description: fields.description || null,
+      category: fields.category || null,
       date: fields.date || null,
       time: fields.time || null,
       venue_name: fields.venueName || null,
@@ -220,20 +226,26 @@ app.get('/health', async (req, res) => {
   return res.json({ status: 'ok', service: 'wedding-share-backend' });
 });
 
-// Admin: get or create wedding
-app.get('/admin/wedding', async (req, res) => {
-  const { adminId } = req.query;
+// Admin: get or create event
+app.get('/event/host/:adminId', async (req, res) => {
+  const { adminId } = req.params;
   if (!adminId) return res.status(400).json({ error: 'adminId requis.' });
   const event = await getEventByAdminId(adminId);
   return res.json({ event });
 });
 
-app.post('/admin/wedding', async (req, res) => {
-  const { adminId, name, date, time, venueName, venueAddress, coverUrl, hostFirstName, hostLastName, hostEmail, hostPhone } = req.body;
+app.get('/event/id/:id', async (req, res) => {
+  const event = await getEventById(req.params.id);
+  if (!event) return res.status(404).json({ error: 'Événement introuvable.' });
+  return res.json({ event });
+});
+
+app.post('/event', async (req, res) => {
+  const { adminId, name, date, time, venueName, venueAddress, coverUrl, description, category, hostFirstName, hostLastName, hostEmail, hostPhone } = req.body;
   if (!adminId || !name) return res.status(400).json({ error: 'adminId et name sont requis.' });
 
   try {
-    const event = await createEvent(adminId, { name, date, time, venueName, venueAddress, coverUrl });
+    const event = await createEvent(adminId, { name, date, time, venueName, venueAddress, coverUrl, description, category });
     if (hostFirstName && hostLastName) {
       await createGuest(event.id, {
         authUserId: adminId,
@@ -241,23 +253,23 @@ app.post('/admin/wedding', async (req, res) => {
         lastName: hostLastName,
         email: hostEmail || null,
         phone: hostPhone || null,
-        relation: 'hôte',
+        relation: 'organisateur',
         role: 'admin',
         isAdmin: true,
       });
     }
     return res.status(201).json({ event });
   } catch (err) {
-    console.error('create wedding error', err);
+    console.error('create event error', err);
     return res.status(500).json({ error: err.message });
   }
 });
 
-app.put('/admin/wedding/:id', async (req, res) => {
-  const { adminId, name, date, time, venueName, venueAddress, coverUrl } = req.body;
+app.put('/event/:id', async (req, res) => {
+  const { adminId, name, date, time, venueName, venueAddress, coverUrl, description, category } = req.body;
   if (!adminId) return res.status(400).json({ error: 'adminId requis.' });
   try {
-    const event = await updateEvent(req.params.id, adminId, { name, date, time, venueName, venueAddress, coverUrl });
+    const event = await updateEvent(req.params.id, adminId, { name, date, time, venueName, venueAddress, coverUrl, description, category });
     return res.json({ event });
   } catch (err) {
     return res.status(500).json({ error: err.message });
@@ -394,12 +406,12 @@ app.put('/user/profile/:authUserId', async (req, res) => {
   return res.json({ success: true });
 });
 
-// Admin stats
-app.get('/admin/stats/:eventId', async (req, res) => {
+// Event stats
+app.get('/event/:id/stats', async (req, res) => {
   const { data, error } = await supabase
     .from('media')
     .select('type')
-    .eq('event_id', req.params.eventId);
+    .eq('event_id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   const photos = data.filter((m) => m.type === 'photo').length;
   const videos = data.filter((m) => m.type === 'video').length;
@@ -408,6 +420,37 @@ app.get('/admin/stats/:eventId', async (req, res) => {
 });
 
 // Guest: list all events joined by authUserId and hosted by authUserId
+app.get('/events/user/:authUserId', async (req, res) => {
+  const authUserId = req.params.authUserId;
+  const { data: guestData, error: guestError } = await supabase
+    .from('guests')
+    .select('*, events(*)')
+    .eq('auth_user_id', authUserId)
+    .order('created_at', { ascending: false });
+  if (guestError) return res.status(500).json({ error: guestError.message });
+
+  const guestEntries = (guestData || []).map((g) => ({
+    guest: mapGuest(g),
+    event: mapEvent(g.events),
+    isHost: false,
+  }));
+
+  const { data: hostData, error: hostError } = await supabase
+    .from('events')
+    .select('*')
+    .eq('admin_id', authUserId)
+    .order('created_at', { ascending: false });
+  if (hostError) return res.status(500).json({ error: hostError.message });
+
+  const joinedIds = new Set(guestEntries.map((entry) => entry.event?.id));
+  const hostEntries = (hostData || [])
+    .filter((e) => !joinedIds.has(e.id))
+    .map((e) => ({ guest: null, event: mapEvent(e), isHost: true }));
+
+  return res.json({ entries: [...hostEntries, ...guestEntries] });
+});
+
+// Legacy guest event endpoint compatibility
 app.get('/guest/events/:authUserId', async (req, res) => {
   const authUserId = req.params.authUserId;
   const { data: guestData, error: guestError } = await supabase

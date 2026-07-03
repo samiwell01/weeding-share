@@ -12,25 +12,35 @@ export default function Navigation() {
 
   if (!authUser) {
     return (
-      <nav className="main-nav">
-        <Link to="/admin">Connexion</Link>
+      <nav className="main-nav header-nav">
+        <Link to="/login">Connexion</Link>
       </nav>
     );
   }
 
   return (
-    <nav className="main-nav">
-      <Link to="/guest/home">🏠 Accueil</Link>
-      <Link to="/admin/wedding">💍 Mon mariage</Link>
-      <Link to="/admin/dashboard">📊 Dashboard</Link>
-      <Link to="/admin/guests">👥 Invités</Link>
-      <Link to="/profile" className="nav-profile-link">
-        <NavAvatar
-          firstName={userProfile?.firstName}
-          lastName={userProfile?.lastName}
-          avatarUrl={userProfile?.avatarUrl}
-        />
-      </Link>
-    </nav>
+    <>
+      <nav className="main-nav header-nav">
+        <Link to="/events">🏠 Événements</Link>
+        <Link to="/events/create">➕ Créer</Link>
+        <Link to="/events/join">🔗 Rejoindre</Link>
+        <div className="nav-right-group">
+          <Link to="/profile" className="nav-profile-link">
+            <NavAvatar
+              firstName={userProfile?.firstName}
+              lastName={userProfile?.lastName}
+              avatarUrl={userProfile?.avatarUrl}
+            />
+          </Link>
+          <button className="nav-signout" onClick={signOut}>Déconnexion</button>
+        </div>
+      </nav>
+      <nav className="main-nav bottom-nav">
+        <Link to="/events">🏠</Link>
+        <Link to="/events/create">➕</Link>
+        <Link to="/events/join">🔗</Link>
+        <Link to="/profile">👤</Link>
+      </nav>
+    </>
   );
 }

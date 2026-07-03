@@ -1,19 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../AppContext';
+
+const sortOptions = [
+  { value: 'recent', label: 'Récent' },
+  { value: 'name', label: 'Nom' },
+  { value: 'date', label: 'Date' },
+  { value: 'type', label: 'Rôle' },
+];
 
 export default function GuestHomePage() {
   const navigate = useNavigate();
   const { authUser, setGuest, setEvent, guestEvents, loadGuestEvents, joinEvent, userProfile } = useApp();
   const [showJoin, setShowJoin] = useState(false);
-  const [joinStep, setJoinStep] = useState('code'); // code | form
+  const [joinStep, setJoinStep] = useState('code');
   const [code, setCode] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', relation: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('recent');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
   useEffect(() => {
-    if (!authUser) { navigate('/'); return; }
+    if (!authUser) { navigate('/login'); return; }
     loadGuestEvents(authUser.id);
   }, [authUser]);
 
@@ -26,6 +36,28 @@ export default function GuestHomePage() {
       phone: userProfile.phone || f.phone,
     }));
   }, [userProfile]);
+
+  const categories = useMemo(() => {
+    return [...new Set(guestEvents.map((entry) => entry.event?.category).filter(Boolean))];
+  }, [guestEvents]);
+
+  const filteredEvents = useMemo(() => {
+    return [...guestEvents]
+      .filter((entry) => {
+        if (categoryFilter !== 'all' && entry.event?.category !== categoryFilter) return false;
+        const term = search.trim().toLowerCase();
+        if (!term) return true;
+        return [entry.event?.name, entry.event?.description, entry.event?.venueName, entry.event?.category]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(term));
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') return (a.event?.name || '').localeCompare(b.event?.name || '');
+        if (sortBy === 'date') return new Date(a.event?.date || 0) - new Date(b.event?.date || 0);
+        if (sortBy === 'type') return (b.isHost || a.guest?.isAdmin ? 0 : 1) - (a.isHost || b.guest?.isAdmin ? 0 : 1);
+        return new Date(b.event?.createdAt || 0) - new Date(a.event?.createdAt || 0);
+      });
+  }, [guestEvents, search, sortBy, categoryFilter]);
 
   const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -50,63 +82,73 @@ export default function GuestHomePage() {
   };
 
   const openEvent = (entry) => {
-    if (entry.guest) {
-      setGuest(entry.guest);
-      setEvent(entry.event);
-      navigate('/guest/media');
-      return;
-    }
+    if (entry.guest) setGuest(entry.guest);
     setEvent(entry.event);
-    navigate('/admin/dashboard');
+    navigate(`/events/${entry.event.id}`);
   };
 
   if (!authUser) return null;
 
   return (
     <div className="card">
-      <h2>Mes mariages 💍</h2>
+      <div className="section-header">
+        <div>
+          <h2>Mes événements</h2>
+          <p className="auth-subtitle">Créez, rejoignez et suivez tous vos événements ici.</p>
+        </div>
+        <div className="action-buttons">
+          <button className="button" onClick={() => navigate('/events/create')}>Créer un événement</button>
+          <button className="button button-secondary" onClick={() => { setShowJoin(true); setJoinStep('code'); setError(''); }}>Rejoindre un événement</button>
+        </div>
+      </div>
 
-      {guestEvents.length === 0 ? (
-        <p className="auth-subtitle">Vous n'avez rejoint aucun mariage pour le moment.</p>
+      <div className="list-controls">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Rechercher un événement, lieu ou catégorie"
+        />
+        <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="all">Toutes les catégories</option>
+          {categories.map((category) => (
+            <option key={category} value={category}>{category}</option>
+          ))}
+        </select>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          {sortOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {filteredEvents.length === 0 ? (
+        <p className="auth-subtitle">Aucun événement trouvé. Créez ou rejoignez-en un pour commencer.</p>
       ) : (
         <div className="event-list">
-          {guestEvents.map((entry) => (
+          {filteredEvents.map((entry) => (
             <div key={entry.event.id} className="event-card" onClick={() => openEvent(entry)}>
-              <div className="event-card-cover" style={{ backgroundImage: `url(${entry.event.coverUrl || 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=900&q=70'})` }} />
+              <div className="event-card-cover" style={{ backgroundImage: `url(${entry.event.coverUrl || 'https://images.unsplash.com/photo-1509021436665-8f07dbf5bf1d?auto=format&fit=crop&w=900&q=70'})` }} />
               <div className="event-card-info">
                 <div className="event-card-top">
-                  <strong>{entry.event?.name || 'Mariage'}</strong>
+                  <strong>{entry.event?.name || 'Événement'}</strong>
                   <span className={`event-badge ${entry.isHost || entry.guest?.isAdmin ? 'host' : 'guest'}`}>
                     {entry.isHost || entry.guest?.isAdmin ? 'Organisateur' : 'Invité'}
                   </span>
                 </div>
-                {entry.event?.date && <span>{new Date(entry.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
-                {entry.event?.venueName && <span>{entry.event.venueName}</span>}
+                {entry.event?.category && <span className="event-meta">{entry.event.category}</span>}
+                {entry.event?.description && <p className="event-description">{entry.event.description}</p>}
+                <div className="event-meta-row">
+                  {entry.event?.date && <span>{new Date(entry.event.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>}
+                  {entry.event?.venueName && <span>{entry.event.venueName}</span>}
+                </div>
               </div>
               <div className="event-card-actions">
-                {entry.guest ? (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); setGuest(entry.guest); setEvent(entry.event); navigate('/guest/upload'); }} className="btn-small">
-                      📤 Ajouter
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small btn-secondary">
-                      🖼 Voir
-                    </button>
-                  </>
-                ) : (
-                  <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small">
-                    Gérer l'événement
-                  </button>
-                )}
+                <button onClick={(e) => { e.stopPropagation(); openEvent(entry); }} className="btn-small">Voir</button>
               </div>
             </div>
           ))}
         </div>
       )}
-
-      <button className="button" style={{ marginTop: 16 }} onClick={() => { setShowJoin(true); setJoinStep('code'); setError(''); }}>
-        + Rejoindre un autre mariage
-      </button>
 
       {showJoin && (
         <div className="modal-overlay" onClick={() => setShowJoin(false)}>
@@ -115,7 +157,7 @@ export default function GuestHomePage() {
 
             {joinStep === 'code' && (
               <>
-                <h3>Rejoindre un mariage</h3>
+                <h3>Rejoindre un événement</h3>
                 <form onSubmit={handleCodeSubmit}>
                   <input
                     value={code}
@@ -126,9 +168,6 @@ export default function GuestHomePage() {
                   {error && <p className="message error">{error}</p>}
                   <button type="submit">Continuer</button>
                 </form>
-                <p className="auth-subtitle" style={{ marginTop: 8 }}>
-                  Ou scannez le QR code avec l'appareil photo de votre téléphone pour ouvrir le lien directement.
-                </p>
               </>
             )}
 

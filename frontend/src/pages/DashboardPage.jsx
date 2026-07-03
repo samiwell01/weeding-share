@@ -7,7 +7,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authUser) { navigate('/admin'); return; }
+    if (!authUser) { navigate('/login'); return; }
     loadAdminWedding(authUser.id).then((e) => {
       if (e) {
         loadEventStats(e.id);
@@ -18,7 +18,7 @@ export default function DashboardPage() {
 
   return (
     <div className="card">
-      <h2>Dashboard mariés</h2>
+      <h2>Tableau de bord</h2>
       {event && <p className="auth-subtitle">{event.name}</p>}
       <div className="stats-grid">
         <div className="stat-card">
@@ -39,8 +39,8 @@ export default function DashboardPage() {
         </div>
       </div>
       <div className="navigation-buttons">
-        <Link to="/admin/wedding" className="button">Mon mariage</Link>
-        <Link to="/admin/guests" className="button button-secondary">Voir les invités</Link>
+        <Link to={`/events/${event?.id}`} className="button">Mon événement</Link>
+        <Link to={`/events/${event?.id}/participants`} className="button button-secondary">Voir les invités</Link>
       </div>
     </div>
   );
