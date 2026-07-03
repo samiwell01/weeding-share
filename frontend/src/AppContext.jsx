@@ -5,9 +5,9 @@ const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [authUser, setAuthUser] = useState(null);       // Supabase auth user (Google)
-  const [guest, setGuest] = useState(null);             // guest record in DB
-  const [event, setEvent] = useState(null);             // current wedding event
+  const [authUser, setAuthUser] = useState(null);
+  const [guest, setGuest] = useState(null);
+  const [event, setEvent] = useState(null);
   const [media, setMedia] = useState([]);
   const [guests, setGuests] = useState([]);
   const [selectedGuestMedia, setSelectedGuestMedia] = useState([]);
@@ -21,15 +21,23 @@ export function AppProvider({ children }) {
       setAuthUser(session?.user ?? null);
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setAuthUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithGoogle = async (redirectPath = '/') => {
-    const redirectTo = `${window.location.origin}/auth/callback?next=${redirectPath}`;
-    await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo } });
+  const signUp = async (email, password) => {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) return { success: false, error: error.message };
+    return { success: true, user: data.user };
+  };
+
+  const signIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { success: false, error: error.message };
+    setAuthUser(data.user);
+    return { success: true, user: data.user };
   };
 
   const signOut = async () => {
@@ -159,7 +167,7 @@ export function AppProvider({ children }) {
       authUser, guest, setGuest, event, setEvent,
       media, guests, selectedGuestMedia,
       message, setMessage, loading,
-      signInWithGoogle, signOut,
+      signUp, signIn, signOut,
       loadAdminWedding, createWedding, updateWedding,
       joinEvent, loadMyMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia,

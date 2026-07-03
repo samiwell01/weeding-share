@@ -375,3 +375,13 @@ button.button { background: #ec4899; color: white; border: none; cursor: pointer
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+.btn-switch {
+  background: none;
+  border: none;
+  color: #ec4899;
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}

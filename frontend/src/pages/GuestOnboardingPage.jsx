@@ -4,28 +4,43 @@ import { useApp } from '../AppContext';
 
 export default function GuestOnboardingPage() {
   const { code } = useParams();
-  const { authUser, signInWithGoogle, joinEvent, guest } = useApp();
+  const { authUser, signIn, signUp, joinEvent, guest } = useApp();
   const navigate = useNavigate();
   const [step, setStep] = useState('login'); // login | form | loading
+  const [authMode, setAuthMode] = useState('login'); // login | register
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [form, setForm] = useState({ firstName: '', lastName: '', phone: '', relation: '' });
   const [error, setError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
 
   useEffect(() => {
     if (guest) { navigate('/guest/home'); return; }
     if (authUser && step === 'login') {
-      // Pre-fill name from Google
-      const name = authUser.user_metadata?.full_name || '';
-      const parts = name.split(' ');
-      setForm((f) => ({
-        ...f,
-        firstName: parts[0] || '',
-        lastName: parts.slice(1).join(' ') || '',
-      }));
+      setForm((f) => ({ ...f }));
       setStep('form');
     }
   }, [authUser, guest]);
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const setField = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setError('');
+    setAuthLoading(true);
+    const result = authMode === 'login'
+      ? await signIn(email, password)
+      : await signUp(email, password);
+    setAuthLoading(false);
+    if (!result.success) { setError(result.error); return; }
+    if (authMode === 'register') {
+      setAuthMode('login');
+      setPassword('');
+      setError('Compte créé ! Connectez-vous maintenant.');
+      return;
+    }
+    setStep('form');
+  };
 
   const handleJoin = async (e) => {
     e.preventDefault();
@@ -36,24 +51,33 @@ export default function GuestOnboardingPage() {
     navigate('/guest/home');
   };
 
+  if (step === 'loading') {
+    return <div className="auth-page"><p>Connexion en cours...</p></div>;
+  }
+
   if (step === 'login') {
     return (
       <div className="auth-page">
         <div className="auth-card">
           <div className="auth-logo">💍</div>
           <h2>Vous êtes invité !</h2>
-          <p className="auth-subtitle">Connectez-vous avec Google pour rejoindre le mariage et partager vos souvenirs</p>
-          <button className="btn-google" onClick={() => signInWithGoogle(`/join/${code}`)}>
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" width={20} />
-            Continuer avec Google
+          <p className="auth-subtitle">
+            {authMode === 'login' ? 'Connectez-vous pour rejoindre le mariage' : 'Créez un compte pour rejoindre le mariage'}
+          </p>
+          <form onSubmit={handleAuth}>
+            <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="password" placeholder="Mot de passe" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            {error && <p className="message error">{error}</p>}
+            <button type="submit" disabled={authLoading}>
+              {authLoading ? '...' : authMode === 'login' ? 'Se connecter' : 'Créer le compte'}
+            </button>
+          </form>
+          <button className="btn-switch" onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setError(''); }}>
+            {authMode === 'login' ? 'Pas de compte ? Créer un compte' : 'Déjà un compte ? Se connecter'}
           </button>
         </div>
       </div>
     );
-  }
-
-  if (step === 'loading') {
-    return <div className="auth-page"><p>Connexion en cours...</p></div>;
   }
 
   return (
@@ -64,16 +88,16 @@ export default function GuestOnboardingPage() {
         <p className="auth-subtitle">Ces informations aideront les mariés à vous identifier</p>
         <form onSubmit={handleJoin}>
           <label>Prénom *
-            <input value={form.firstName} onChange={set('firstName')} placeholder="Prénom" required />
+            <input value={form.firstName} onChange={setField('firstName')} placeholder="Prénom" required />
           </label>
           <label>Nom *
-            <input value={form.lastName} onChange={set('lastName')} placeholder="Nom" required />
+            <input value={form.lastName} onChange={setField('lastName')} placeholder="Nom" required />
           </label>
           <label>Téléphone
-            <input value={form.phone} onChange={set('phone')} placeholder="+261 34 00 000 00" type="tel" />
+            <input value={form.phone} onChange={setField('phone')} placeholder="+261 34 00 000 00" type="tel" />
           </label>
           <label>Vous êtes...
-            <select value={form.relation} onChange={set('relation')}>
+            <select value={form.relation} onChange={setField('relation')}>
               <option value="">Sélectionner</option>
               <option value="famille">Famille</option>
               <option value="ami">Ami(e)</option>

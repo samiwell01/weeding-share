@@ -9,17 +9,9 @@ export default function AuthCallbackPage() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       const params = new URLSearchParams(window.location.search);
       const next = params.get('next') || '/';
-      if (session) {
-        navigate(next, { replace: true });
-      } else {
-        navigate('/', { replace: true });
-      }
+      navigate(session ? next : '/', { replace: true });
     });
   }, []);
 
-  return (
-    <div className="auth-page">
-      <p>Connexion en cours...</p>
-    </div>
-  );
+  return <div className="auth-page"><p>Connexion en cours...</p></div>;
 }
