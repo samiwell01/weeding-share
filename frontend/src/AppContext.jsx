@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 
 const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
@@ -9,7 +9,7 @@ export function AppProvider({ children }) {
   const [guest, setGuest] = useState(null);
   const [event, setEvent] = useState(null);
   const [guestEvents, setGuestEvents] = useState([]);
-  const [userProfile, setUserProfile] = useState(null); // { firstName, lastName, email, phone, avatarUrl }
+  const [userProfile, setUserProfile] = useState(null);
   const [media, setMedia] = useState([]);
   const [guests, setGuests] = useState([]);
   const [selectedGuestMedia, setSelectedGuestMedia] = useState([]);
@@ -30,13 +30,12 @@ export function AppProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load profile + guest events when authUser changes
   useEffect(() => {
     if (authUser) {
       loadGuestEvents(authUser.id);
       loadUserProfile(authUser.id);
     }
-  }, [authUser]);
+  }, [authUser?.id]);
 
   const signUp = async (email, password) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
@@ -67,30 +66,19 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  // ─── USER PROFILE ──────────────────────────────────────────────────────────
+  // ─── PROFILE ───────────────────────────────────────────────────────────────
 
-  const loadUserProfile = useCallback(async (authUserId) => {
-    if (!authUserId) return;
-    const res = await fetch(`${API_URL}/user/profile/${authUserId}`);
-    const data = await res.json();
-    if (data.profile) {
-      setUserProfile(data.profile);
-      return data.profile;
-    }
+  const loadUserProfile = async (authUserId) => {
+    if (!authUserId) return null;
+    try {
+      const res = await fetch(`${API_URL}/user/profile/${authUserId}`);
+      const data = await res.json();
+      if (data.profile) { setUserProfile(data.profile); return data.profile; }
+    } catch (_) {}
+    return null;
+  };
 
-    const { data: authUserData } = await supabase.auth.getUser();
-    const authUserProfile = authUserData?.user ? {
-      firstName: authUserData.user.user_metadata?.firstName || '',
-      lastName: authUserData.user.user_metadata?.lastName || '',
-      email: authUserData.user.email || '',
-      phone: authUserData.user.user_metadata?.phone || '',
-      avatarUrl: authUserData.user.user_metadata?.avatarUrl || '',
-    } : null;
-    if (authUserProfile) setUserProfile(authUserProfile);
-    return authUserProfile;
-  }, []);
-
-  const updateUserProfile = useCallback(async (fields) => {
+  const updateUserProfile = async (fields) => {
     if (!authUser) return { success: false };
     const res = await fetch(`${API_URL}/user/profile/${authUser.id}`, {
       method: 'PUT',
@@ -99,61 +87,48 @@ export function AppProvider({ children }) {
     });
     const data = await res.json();
     if (!res.ok) return { success: false, error: data.error };
-
-    const { error: authError } = await supabase.auth.updateUser({ data: fields });
-    if (authError) {
-      console.warn('Failed to update auth metadata', authError.message);
-    }
-
     setUserProfile((p) => ({ ...p, ...fields }));
     return { success: true };
-  }, [authUser]);
+  };
 
-  // ─── ADMIN WEDDING ─────────────────────────────────────────────────────────
+  // ─── EVENTS ────────────────────────────────────────────────────────────────
 
-  const loadAdminWedding = useCallback(async (adminId) => {
+  const loadAdminWedding = async (adminId) => {
     const res = await fetch(`${API_URL}/event/host/${adminId}`);
     const data = await res.json();
     if (data.event) setEvent(data.event);
     return data.event || null;
-  }, []);
+  };
 
-  const loadEventById = useCallback(async (eventId) => {
+  const loadEventById = async (eventId) => {
     if (!eventId) return null;
     const res = await fetch(`${API_URL}/event/id/${eventId}`);
     const data = await res.json();
     if (data.event) setEvent(data.event);
     return data.event || null;
-  }, []);
+  };
 
-  const loadEventStats = useCallback(async (eventId) => {
+  const loadEventStats = async (eventId) => {
     if (!eventId) return;
     const res = await fetch(`${API_URL}/event/${eventId}/stats`);
     const data = await res.json();
     setEventStats(data);
-  }, []);
+  };
 
-  const createWedding = useCallback(async (fields) => {
+  const createWedding = async (fields) => {
     const res = await fetch(`${API_URL}/event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        adminId: authUser.id,
-        hostFirstName: userProfile?.firstName,
-        hostLastName: userProfile?.lastName,
-        hostEmail: authUser.email,
-        hostPhone: userProfile?.phone,
-        ...fields,
-      }),
+      body: JSON.stringify({ adminId: authUser.id, hostFirstName: userProfile?.firstName, hostLastName: userProfile?.lastName, hostEmail: authUser.email, hostPhone: userProfile?.phone, ...fields }),
     });
     const data = await res.json();
     if (!res.ok) return { success: false, error: data.error, event: data.event };
     setEvent(data.event);
     await loadGuestEvents(authUser.id);
     return { success: true, event: data.event };
-  }, [authUser, userProfile]);
+  };
 
-  const updateWedding = useCallback(async (id, fields) => {
+  const updateWedding = async (id, fields) => {
     const res = await fetch(`${API_URL}/event/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -163,79 +138,63 @@ export function AppProvider({ children }) {
     if (!res.ok) return { success: false, error: data.error };
     setEvent(data.event);
     return { success: true, event: data.event };
-  }, [authUser]);
+  };
 
   // ─── GUEST EVENTS ──────────────────────────────────────────────────────────
 
-  const loadGuestEvents = useCallback(async (authUserId) => {
+  const loadGuestEvents = async (authUserId) => {
     if (!authUserId) return [];
-    const res = await fetch(`${API_URL}/events/user/${authUserId}`);
-    const data = await res.json();
-    setGuestEvents(data.entries || []);
-    return data.entries || [];
-  }, []);
+    try {
+      const res = await fetch(`${API_URL}/events/user/${authUserId}`);
+      const data = await res.json();
+      setGuestEvents(data.entries || []);
+      return data.entries || [];
+    } catch (_) { return []; }
+  };
 
-  const joinEvent = useCallback(async ({ code, firstName, lastName, phone, relation }) => {
+  const joinEvent = async ({ code, firstName, lastName, phone, relation }) => {
     if (!authUser) return { success: false, error: 'Non connecté' };
     const res = await fetch(`${API_URL}/guest/join`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code,
-        authUserId: authUser.id,
-        firstName,
-        lastName,
-        email: authUser.email,
-        phone,
-        relation,
-      }),
+      body: JSON.stringify({ code, authUserId: authUser.id, firstName, lastName, email: authUser.email, phone, relation }),
     });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }
     setGuest(data.guest);
     setEvent(data.event);
-    await loadMyMedia(data.guest.id);
+    const mediaRes = await fetch(`${API_URL}/my-media/${data.guest.id}`);
+    const mediaData = await mediaRes.json();
+    setMedia(mediaData.media || []);
     await loadGuestEvents(authUser.id);
     return { success: true, guest: data.guest, event: data.event };
-  }, [authUser, loadMyMedia, loadGuestEvents]);
-
-  // Check if authUser already joined a specific event by code
-  const checkAlreadyJoined = (code) => {
-    return guestEvents.find((e) => e.event?.accessCode === code) || null;
   };
 
   // ─── MEDIA ─────────────────────────────────────────────────────────────────
 
-  const loadMyMedia = useCallback(async (guestId) => {
+  const loadMyMedia = async (guestId) => {
     if (!guestId) return;
     const res = await fetch(`${API_URL}/my-media/${guestId}`);
     const data = await res.json();
     setMedia(data.media || []);
-  }, []);
+  };
 
-  const uploadMedia = useCallback(async ({ file, type: mediaType }) => {
+  const uploadMedia = async ({ file, type: mediaType }) => {
     if (!guest || !file) return { success: false, error: 'Missing guest or file' };
     const formData = new FormData();
     formData.append('file', file);
     formData.append('guestId', guest.id);
     formData.append('eventId', guest.eventId);
     formData.append('type', mediaType);
-    if (authUser) {
-      formData.append('authUserId', authUser.id);
-      formData.append('firstName', userProfile?.firstName || authUser.user_metadata?.firstName || 'Organisateur');
-      formData.append('lastName', userProfile?.lastName || authUser.user_metadata?.lastName || 'Hôte');
-      formData.append('email', authUser.email || '');
-      formData.append('phone', userProfile?.phone || authUser.user_metadata?.phone || '');
-    }
     const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }
     setMessage(`${mediaType} envoyé avec succès`);
     await loadMyMedia(guest.id);
     return { success: true, media: data.media };
-  }, [authUser, guest, userProfile, loadMyMedia]);
+  };
 
-  const deleteMedia = useCallback(async (mediaId) => {
+  const deleteMedia = async (mediaId) => {
     if (!guest) return { success: false };
     const res = await fetch(`${API_URL}/media/${mediaId}`, {
       method: 'DELETE',
@@ -247,25 +206,24 @@ export function AppProvider({ children }) {
     setMessage('Contenu supprimé');
     await loadMyMedia(guest.id);
     return { success: true };
-  }, [guest, loadMyMedia]);
+  };
 
-  // ─── GUESTS LIST ───────────────────────────────────────────────────────────
+  // ─── GUESTS ────────────────────────────────────────────────────────────────
 
-  const loadGuests = useCallback(async (eventId) => {
+  const loadGuests = async (eventId) => {
     const url = eventId ? `${API_URL}/guests?eventId=${eventId}` : `${API_URL}/guests`;
     const res = await fetch(url);
     const data = await res.json();
-    const list = data.guests || [];
-    setGuests(list);
-    return list;
-  }, []);
+    setGuests(data.guests || []);
+    return data.guests || [];
+  };
 
-  const loadGuestMedia = useCallback(async (guestId) => {
+  const loadGuestMedia = async (guestId) => {
     if (!guestId) return;
     const res = await fetch(`${API_URL}/guest/${guestId}/media`);
     const data = await res.json();
     setSelectedGuestMedia(data.media || []);
-  }, []);
+  };
 
   return (
     <AppContext.Provider value={{
@@ -275,7 +233,7 @@ export function AppProvider({ children }) {
       signUp, signIn, signOut, updatePassword,
       loadUserProfile, updateUserProfile,
       loadAdminWedding, loadEventById, loadEventStats, createWedding, updateWedding,
-      loadGuestEvents, joinEvent, checkAlreadyJoined,
+      loadGuestEvents, joinEvent,
       loadMyMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia,
     }}>
