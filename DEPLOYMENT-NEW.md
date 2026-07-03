@@ -33,12 +33,9 @@ Le frontend et le backend sont fusionnés dans un seul service Node.js :
 | **Name** | `wedding-share` |
 | **Region** | Choisir la région la plus proche |
 | **Branch** | `main` |
-| **Root Directory** | `.` |
 | **Runtime** | `Node` |
 | **Build Command** | `npm install --prefix backend && npm install --prefix frontend --include=dev && npm run build --prefix frontend` |
 | **Start Command** | `npm start --prefix backend` |
-
-> Si le service Render existait déjà avec une autre configuration, il faut mettre à jour ces paramètres dans l'interface Render. Le fichier `render.yaml` n'est pris en compte que si le service est importé depuis le dépôt ou si Render est configuré pour utiliser le YAML du dépôt.
 
 ### 5. Variables d'environnement
 Ajouter dans la section "Environment" :
