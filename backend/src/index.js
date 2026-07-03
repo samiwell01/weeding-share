@@ -139,18 +139,6 @@ async function createGuest(eventId, firstName, lastName) {
   return mapGuest(data);
 }
 
-  const { data, error } = await supabase
-    .from('guests')
-    .insert([{ event_id: eventId, first_name: firstName, last_name: lastName, role: 'guest', is_admin: false }])
-    .single();
-
-  if (error) {
-    console.error('Supabase guest insert error', error);
-    throw error;
-  }
-  return mapGuest(data);
-}
-
 async function createMediaRecord(guestId, eventId, type, fileName, fileUrl) {
   if (!useDb) {
     throw new Error('Supabase not configured');
