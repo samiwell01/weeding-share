@@ -44,6 +44,8 @@ Ajouter dans la section "Environment" :
 - `SUPABASE_SERVICE_ROLE_KEY` = `<your-service-role-key>`
 - `SUPABASE_BUCKET_NAME` = `wedding-media`
 
+> Important : utilisez la **service role key** fournie par Supabase et non la clé publique `anon`. La clé publique ne peut pas écrire sur des tables protégées par la row-level security.
+
 ### 6. Lancer le déploiement
 - Cliquer sur **"Create Web Service"**
 - Attendre le build et le déploiement (2-3 minutes)

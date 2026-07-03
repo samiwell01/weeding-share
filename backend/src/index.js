@@ -54,6 +54,10 @@ function mapMedia(item) {
   };
 }
 
+function isInvalidSupabaseKeyError(error) {
+  return error && error.code === '42501';
+}
+
 async function ensureInitialData() {
   if (!useDb) {
     console.log('Supabase not configured, skipping initial data setup.');
@@ -67,7 +71,11 @@ async function ensureInitialData() {
     .limit(1)
     .single();
 
-  if (eventError && eventError.code !== 'PGRST116') {
+  if (eventError) {
+    if (isRowLevelSecurityError(eventError)) {
+      console.error('Supabase row-level security error during event lookup. Ensure SUPABASE_SERVICE_ROLE_KEY is a service role key, not anon.');
+      process.exit(1);
+    }
     console.error('Supabase initial event lookup error', eventError);
     return;
   }
@@ -79,6 +87,10 @@ async function ensureInitialData() {
       .single();
 
     if (createError) {
+      if (isRowLevelSecurityError(createError)) {
+        console.error('Supabase row-level security error during event insert. Ensure SUPABASE_SERVICE_ROLE_KEY is a service role key, not anon.');
+        process.exit(1);
+      }
       console.error('Supabase event seed error', createError);
       return;
     }
@@ -95,7 +107,12 @@ async function findEventByCode(code) {
   const { data, error } = await supabase.from('events').select('*').eq('access_code', code).limit(1).single();
   if (error) {
     console.error('Supabase event lookup error', error);
-    return null;
+    if (isInvalidSupabaseKeyError(error)) {
+      const invalidKeyError = new Error('INVALID_SUPABASE_KEY');
+      invalidKeyError.supabaseError = error;
+      throw invalidKeyError;
+    }
+    throw error;
   }
   return mapEvent(data);
 }
@@ -104,6 +121,23 @@ async function createGuest(eventId, firstName, lastName) {
   if (!useDb) {
     throw new Error('Supabase not configured');
   }
+
+  const { data, error } = await supabase
+    .from('guests')
+    .insert([{ event_id: eventId, first_name: firstName, last_name: lastName, role: 'guest', is_admin: false }])
+    .single();
+
+  if (error) {
+    console.error('Supabase guest insert error', error);
+    if (isInvalidSupabaseKeyError(error)) {
+      const invalidKeyError = new Error('INVALID_SUPABASE_KEY');
+      invalidKeyError.supabaseError = error;
+      throw invalidKeyError;
+    }
+    throw error;
+  }
+  return mapGuest(data);
+}
 
   const { data, error } = await supabase
     .from('guests')
@@ -222,16 +256,21 @@ app.post('/join-event', async (req, res) => {
     return res.status(400).json({ error: 'Code, prénom et nom sont requis.' });
   }
 
-  const event = await findEventByCode(code);
-  if (!event) {
-    return res.status(404).json({ error: 'Événement introuvable.' });
-  }
-
   try {
+    const event = await findEventByCode(code);
+    if (!event) {
+      return res.status(404).json({ error: 'Événement introuvable.' });
+    }
+
     const guest = await createGuest(event.id, firstName, lastName);
     return res.status(201).json({ guest, event });
   } catch (error) {
     console.error('join-event error', error);
+    if (error.message === 'INVALID_SUPABASE_KEY') {
+      return res.status(500).json({
+        error: 'Supabase invalide : vérifiez que SUPABASE_SERVICE_ROLE_KEY est une service role key et non la clé publique anon.',
+      });
+    }
     return res.status(500).json({ error: 'Impossible de créer l’invité.' });
   }
 });
