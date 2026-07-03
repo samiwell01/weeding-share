@@ -1,133 +1,106 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../AppContext';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function UploadPage() {
+  const { id: eventId } = useParams();
   const navigate = useNavigate();
-  const { guest, uploadMedia, message, setMessage } = useApp();
+  const { authUser, guest, setGuest, guestEvents, uploadMedia, message, setMessage } = useApp();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [type, setType] = useState('photo');
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
-    if (!guest) {
-      navigate('/');
-    }
-  }, [guest]);
+    if (!authUser) { navigate('/login'); return; }
+    const entry = guestEvents.find((e) => e.event?.id === eventId);
+    if (entry?.guest) setGuest(entry.guest);
+    setPageLoading(false);
+  }, [authUser, eventId, guestEvents]);
 
-  const handleFilesChange = (event) => {
-    const files = Array.from(event.target.files || []);
-    const newFiles = files.map((file) => ({
-      id: `${file.name}-${file.size}-${file.lastModified}`,
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-    setSelectedFiles((current) => [...current, ...newFiles]);
+  const handleFilesChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles((cur) => [...cur, ...files.map((f) => ({
+      id: `${f.name}-${f.size}-${f.lastModified}`,
+      file: f,
+      preview: URL.createObjectURL(f),
+    }))]);
     setUploadError('');
   };
 
-  const removeFile = (fileId) => {
-    setSelectedFiles((current) => {
-      const removed = current.find((item) => item.id === fileId);
-      if (removed) URL.revokeObjectURL(removed.preview);
-      return current.filter((item) => item.id !== fileId);
-    });
-  };
+  const removeFile = (id) => setSelectedFiles((cur) => {
+    const removed = cur.find((i) => i.id === id);
+    if (removed) URL.revokeObjectURL(removed.preview);
+    return cur.filter((i) => i.id !== id);
+  });
 
   const clearSelection = () => {
-    selectedFiles.forEach((item) => URL.revokeObjectURL(item.preview));
+    selectedFiles.forEach((i) => URL.revokeObjectURL(i.preview));
     setSelectedFiles([]);
     setUploadError('');
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    if (!selectedFiles.length) {
-      setUploadError('Veuillez sélectionner au moins une image avant d’uploader.');
-      return;
-    }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedFiles.length) { setUploadError('Sélectionnez au moins un fichier.'); return; }
+    if (!guest) { setUploadError('Vous devez rejoindre cet événement d\'abord.'); return; }
     setIsUploading(true);
     setUploadError('');
-    setMessage(`Upload de ${selectedFiles.length} fichier(s) en cours...`);
-
+    setMessage(`Upload de ${selectedFiles.length} fichier(s)…`);
     for (const item of selectedFiles) {
       const result = await uploadMedia({ file: item.file, type });
-      if (!result.success) {
-        setUploadError(result.error || 'Échec de l’upload.');
-        setIsUploading(false);
-        return;
-      }
+      if (!result.success) { setUploadError(result.error || 'Échec upload.'); setIsUploading(false); return; }
     }
-
     clearSelection();
-    setMessage('Tous les fichiers ont été uploadés avec succès.');
+    setMessage('Tous les fichiers ont été uploadés !');
     setIsUploading(false);
-    navigate('/guest/media');
+    navigate(eventId ? `/events/${eventId}/media` : '/events');
   };
 
-  const previewItems = useMemo(
-    () => selectedFiles.map((item) => (
-      <div key={item.id} className="upload-preview-card">
-        <img src={item.preview} alt={item.file.name} className="upload-preview-image" />
-        <div className="upload-preview-info">
-          <strong>{item.file.name}</strong>
-          <span>{Math.round(item.file.size / 1024)} KB</span>
-        </div>
-        <button type="button" className="button button-small" onClick={() => removeFile(item.id)}>
-          Supprimer
-        </button>
+  const previews = useMemo(() => selectedFiles.map((item) => (
+    <div key={item.id} className="upload-preview-card">
+      <img src={item.preview} alt={item.file.name} className="upload-preview-image" />
+      <div className="upload-preview-info">
+        <strong>{item.file.name}</strong>
+        <span>{Math.round(item.file.size / 1024)} KB</span>
       </div>
-    )),
-    [selectedFiles]
-  );
+      <button type="button" className="button button-secondary" onClick={() => removeFile(item.id)}>Retirer</button>
+    </div>
+  )), [selectedFiles]);
 
-  if (!guest) {
-    return null;
-  }
+  if (pageLoading) return <LoadingOverlay message="Chargement…" />;
 
   return (
     <div className="card">
-      <h2>Uploader des photos</h2>
+      <h2>Ajouter des médias</h2>
       <form onSubmit={handleSubmit}>
-        <label className="form-label">
-          Sélectionnez une ou plusieurs images
-          <input type="file" accept="image/*" multiple onChange={handleFilesChange} />
-        </label>
-
-        <label className="form-label">
-          Type de média
+        <label>Type de média
           <select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="photo">Photo</option>
-            <option value="video">Vidéo</option>
-            <option value="audio">Audio</option>
+            <option value="photo">📷 Photo</option>
+            <option value="video">🎥 Vidéo</option>
+            <option value="audio">🎵 Audio</option>
           </select>
         </label>
-
-        {selectedFiles.length > 0 && (
-          <div className="upload-preview-grid">
-            {previewItems}
-          </div>
-        )}
-
+        <label>Sélectionner des fichiers
+          <input type="file" accept={type === 'audio' ? 'audio/*' : type === 'video' ? 'video/*' : 'image/*'} multiple onChange={handleFilesChange} />
+        </label>
+        {selectedFiles.length > 0 && <div className="upload-preview-grid">{previews}</div>}
         <div className="form-actions">
-          <button type="submit" disabled={isUploading || selectedFiles.length === 0}>
-            {isUploading ? 'Envoi en cours...' : `Uploader ${selectedFiles.length} fichier(s)`}
+          <button type="submit" disabled={isUploading || !selectedFiles.length}>
+            {isUploading ? 'Envoi…' : `Uploader ${selectedFiles.length} fichier(s)`}
           </button>
-          <button type="button" className="button button-secondary" onClick={clearSelection} disabled={isUploading || selectedFiles.length === 0}>
-            Effacer la sélection
-          </button>
+          <button type="button" className="button button-secondary" onClick={clearSelection} disabled={!selectedFiles.length}>Effacer</button>
         </div>
       </form>
-
       {(uploadError || message) && (
         <div className="message-box">
           {uploadError ? <p className="message error">{uploadError}</p> : <p className="message">{message}</p>}
         </div>
       )}
-
       <div className="navigation-buttons">
-        <Link to="/guest/home" className="button">Retour à l'accueil</Link>
+        <Link to={eventId ? `/events/${eventId}` : '/events'} className="button button-secondary">Retour</Link>
       </div>
     </div>
   );

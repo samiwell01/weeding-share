@@ -1,28 +1,39 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 import Lightbox from '../components/Lightbox';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function MyMediaPage() {
+  const { id: eventId } = useParams();
   const navigate = useNavigate();
-  const { guest, media, loadMyMedia, deleteMedia, message } = useApp();
+  const { authUser, guest, setGuest, guestEvents, media, loadMyMedia, deleteMedia, message } = useApp();
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const viewable = media.filter((m) => m.type === 'photo' || m.type === 'video');
 
   useEffect(() => {
-    if (guest) loadMyMedia(guest.id);
-    else navigate('/');
-  }, [guest]);
+    if (!authUser) { navigate('/login'); return; }
+    const entry = guestEvents.find((e) => e.event?.id === eventId);
+    if (entry?.guest) {
+      setGuest(entry.guest);
+      loadMyMedia(entry.guest.id).then(() => setPageLoading(false));
+    } else if (guest) {
+      loadMyMedia(guest.id).then(() => setPageLoading(false));
+    } else {
+      setPageLoading(false);
+    }
+  }, [authUser, eventId, guestEvents]);
 
-  if (!guest) return null;
+  if (pageLoading) return <LoadingOverlay message="Chargement des médias…" />;
 
   return (
     <div className="card">
-      <h2>Mes souvenirs</h2>
+      <h2>Mes médias</h2>
       {message && <p className="message">{message}</p>}
       {media.length === 0 ? (
-        <p>Aucun média pour le moment.</p>
+        <p className="auth-subtitle">Aucun média pour le moment.</p>
       ) : (
         <div className="media-grid">
           {media.map((item) => {
@@ -30,12 +41,7 @@ export default function MyMediaPage() {
             return (
               <div key={item.id} className="media-card">
                 {item.type === 'photo' && (
-                  <img
-                    src={item.fileUrl}
-                    alt={item.fileName}
-                    className="media-preview-img clickable"
-                    onClick={() => setLightboxIndex(viewIndex)}
-                  />
+                  <img src={item.fileUrl} alt={item.fileName} className="media-preview-img clickable" onClick={() => setLightboxIndex(viewIndex)} />
                 )}
                 {item.type === 'video' && (
                   <div className="media-video-thumb clickable" onClick={() => setLightboxIndex(viewIndex)}>
@@ -43,9 +49,7 @@ export default function MyMediaPage() {
                     <span className="play-icon">▶</span>
                   </div>
                 )}
-                {item.type === 'audio' && (
-                  <audio src={item.fileUrl} controls className="media-preview-audio" />
-                )}
+                {item.type === 'audio' && <audio src={item.fileUrl} controls className="media-preview-audio" />}
                 <div className="media-card-footer">
                   <span className="media-card-name">{item.fileName}</span>
                   <button onClick={() => deleteMedia(item.id)}>Supprimer</button>
@@ -56,13 +60,11 @@ export default function MyMediaPage() {
         </div>
       )}
       <div className="navigation-buttons">
-        <Link to="/guest/home" className="button">Retour</Link>
+        <Link to={eventId ? `/events/${eventId}` : '/events'} className="button button-secondary">Retour</Link>
+        <Link to={eventId ? `/events/${eventId}/upload` : '/events'} className="button">📤 Ajouter</Link>
       </div>
-
       {lightboxIndex !== null && (
-        <Lightbox
-          items={viewable}
-          index={lightboxIndex}
+        <Lightbox items={viewable} index={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
           onPrev={() => setLightboxIndex((i) => Math.max(0, i - 1))}
           onNext={() => setLightboxIndex((i) => Math.min(viewable.length - 1, i + 1))}
