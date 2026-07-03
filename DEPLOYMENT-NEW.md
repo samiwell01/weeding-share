@@ -40,6 +40,9 @@ Le frontend et le backend sont fusionnés dans un seul service Node.js :
 ### 5. Variables d'environnement
 Ajouter dans la section "Environment" :
 - `NODE_ENV` = `production`
+- `SUPABASE_URL` = `https://<your-project>.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY` = `<your-service-role-key>`
+- `SUPABASE_BUCKET_NAME` = `wedding-media`
 
 ### 6. Lancer le déploiement
 - Cliquer sur **"Create Web Service"**

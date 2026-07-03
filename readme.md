@@ -90,6 +90,8 @@ Les mariés peuvent voir la liste de tous les invités et ouvrir le profil d'un 
 - event_id
 - first_name
 - last_name
+- role (guest | admin)
+- is_admin
 - created_at
 
 ### Table media
@@ -97,8 +99,18 @@ Les mariés peuvent voir la liste de tous les invités et ouvrir le profil d'un 
 - guest_id
 - event_id
 - type (photo, video, audio)
+- file_name
 - file_url
 - created_at
+
+### Notes sur les rôles
+- un invité normal a `role = guest` et `is_admin = false`
+- les mariés sont enregistrés comme `role = admin` et `is_admin = true`
+- cette structure permet de distinguer les invités des administrateurs sans authentification complexe
+
+### Supabase
+La base de données est gérée par Supabase PostgreSQL.
+Le schéma SQL est disponible dans `supabase/schema.sql`.
 
 ## Architecture technique
 
