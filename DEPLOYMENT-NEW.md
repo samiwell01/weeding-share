@@ -47,6 +47,9 @@ Ajouter dans la section "Environment" :
 - `SUPABASE_S3_SECRET_KEY` = `<your-s3-secret-key>`
 - `SUPABASE_S3_REGION` = `<your-s3-region>` (ex: `eu-west-1`)
 - `SUPABASE_S3_ENDPOINT` = `https://<your-project>.supabase.co/storage/v1/s3`
+- `VITE_SUPABASE_URL` = `https://<your-project>.supabase.co`
+- `VITE_SUPABASE_ANON_KEY` = `<your-anon-key>` (Supabase Dashboard > Settings > API > anon public)
+- `VITE_API_URL` = `https://<your-render-app>.onrender.com`
 
 > Important : utilisez la **service role key** fournie par Supabase et non la clé publique `anon`. La clé publique ne peut pas écrire sur des tables protégées par la row-level security.
 
@@ -70,6 +73,43 @@ Ajouter dans la section "Environment" :
 4. Tester l'upload d'un fichier
 5. Vérifier que le fichier apparaît dans **"Mes souvenirs"**
 6. Tester la suppression du fichier
+
+## Configuration Google OAuth (Supabase)
+
+Les mariés et les invités se connectent avec Google via Supabase Auth.
+
+### 1. Activer Google OAuth dans Supabase
+
+1. Aller sur [https://supabase.com/dashboard](https://supabase.com/dashboard)
+2. Ouvrir ton projet
+3. Aller dans **Authentication** > **Providers**
+4. Trouver **Google** et cliquer pour l'activer
+5. Tu auras besoin d'un **Client ID** et **Client Secret** Google
+
+### 2. Créer les credentials Google OAuth
+
+1. Aller sur [https://console.cloud.google.com](https://console.cloud.google.com)
+2. Créer un projet ou sélectionner un existant
+3. Aller dans **APIs & Services** > **Credentials**
+4. Cliquer **Create Credentials** > **OAuth 2.0 Client IDs**
+5. Application type : **Web application**
+6. Authorized redirect URIs — ajouter :
+   - `https://<your-project>.supabase.co/auth/v1/callback`
+7. Copier le **Client ID** et **Client Secret**
+
+### 3. Configurer dans Supabase
+
+1. Retourner dans Supabase > **Authentication** > **Providers** > **Google**
+2. Coller le **Client ID** et **Client Secret**
+3. Dans **Redirect URLs** (Supabase > Authentication > URL Configuration), ajouter :
+   - `https://<your-render-app>.onrender.com/auth/callback`
+4. Sauvegarder
+
+### 4. Mettre à jour le schéma SQL
+
+1. Aller dans Supabase > **SQL Editor**
+2. Copier le contenu de `supabase/schema.sql`
+3. Exécuter le script
 
 ## Configuration Supabase Storage (bucket privé)
 

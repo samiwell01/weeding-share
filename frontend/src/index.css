@@ -9,24 +9,14 @@ body {
   background: linear-gradient(135deg, #fdf2f8 0%, #f5f7fb 100%);
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-button,
-input,
-select {
-  font: inherit;
-}
+button, input, select { font: inherit; }
 
 .app-shell {
   max-width: 900px;
   margin: 0 auto;
   padding: 24px;
-}
-
-header {
-  margin-bottom: 20px;
 }
 
 .card {
@@ -37,42 +27,28 @@ header {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+form { display: flex; flex-direction: column; gap: 10px; }
 
-input,
-select,
-button {
+input, select, button {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid #d1d5db;
 }
 
-button {
-  cursor: pointer;
-  background: #ec4899;
-  color: white;
-  border: none;
-}
+button { cursor: pointer; background: #ec4899; color: white; border: none; }
 
-.message {
-  margin-top: 10px;
-  color: #be185d;
-}
+.message { margin-top: 10px; color: #be185d; }
+.message-box { margin-top: 16px; }
+.message.error { color: #b91c1c; }
 
-.media-list,
-.guest-list {
+.media-list, .guest-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 10px;
 }
 
-.media-item,
-.guest-button {
+.media-item, .guest-button {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -82,29 +58,26 @@ button {
   background: #fafafa;
 }
 
-.guest-button,
-.button {
-  justify-content: center;
-  text-decoration: none;
-  color: #111827;
-}
+.guest-button, .button { justify-content: center; text-decoration: none; color: #111827; }
 
 .main-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin: 0 0 20px;
+  align-items: center;
 }
 
 .main-nav a {
   display: inline-flex;
   align-items: center;
-  padding: 10px 14px;
+  padding: 8px 14px;
   border-radius: 9999px;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
   color: #0f172a;
   text-decoration: none;
+  font-size: 0.9rem;
 }
 
 .stats-grid {
@@ -119,14 +92,12 @@ button {
   border-radius: 14px;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.navigation-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
+.navigation-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 
 .navigation-buttons .button {
   display: inline-flex;
@@ -140,12 +111,7 @@ button {
   text-decoration: none;
 }
 
-button.button {
-  background: #ec4899;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
+button.button { background: #ec4899; color: white; border: none; cursor: pointer; }
 
 .upload-preview-grid {
   display: grid;
@@ -172,27 +138,17 @@ button.button {
   background: #e5e7eb;
 }
 
-.upload-preview-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.9rem;
-  color: #111827;
-}
+.upload-preview-info { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: #111827; }
 
-.form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
-}
+.form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 
-.button-secondary,
-button.button-secondary {
+.button-secondary, button.button-secondary {
   background: #f3f4f6;
   color: #111827;
   border: 1px solid #d1d5db;
 }
+
+/* ─── MEDIA GRID ─────────────────────────────────────────────────────────── */
 
 .media-grid {
   display: grid;
@@ -210,25 +166,10 @@ button.button-secondary {
   background: #f9fafb;
 }
 
-.media-preview-img {
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  display: block;
-  background: #e5e7eb;
-}
+.media-preview-img { width: 100%; height: 140px; object-fit: cover; display: block; background: #e5e7eb; }
+.media-preview-audio { width: 100%; padding: 8px; }
 
-.media-preview-audio {
-  width: 100%;
-  padding: 8px;
-}
-
-.media-card-footer {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-}
+.media-card-footer { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
 
 .media-card-name {
   font-size: 0.75rem;
@@ -249,7 +190,188 @@ button.button-secondary {
   cursor: pointer;
 }
 
-.media-card-footer button:hover {
-  background: #fecaca;
+.media-card-footer button:hover { background: #fecaca; }
+
+/* ─── AUTH / ONBOARDING ──────────────────────────────────────────────────── */
+
+.auth-page {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.auth-card, .setup-card {
+  background: white;
+  border-radius: 20px;
+  padding: 36px 28px;
+  box-shadow: 0 8px 32px rgba(15,23,42,0.10);
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-card { text-align: left; }
+.setup-card form { gap: 14px; }
+.setup-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.auth-logo { font-size: 2.5rem; }
+.auth-subtitle { color: #6b7280; font-size: 0.9rem; margin: 0; }
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 12px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.btn-google:hover { background: #f9fafb; }
+
+/* ─── WEDDING INFO PAGE ──────────────────────────────────────────────────── */
+
+.wedding-page { max-width: 480px; margin: 0 auto; }
+
+.wedding-cover {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.wedding-body {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+  margin-top: -16px;
+  position: relative;
+}
+
+.wedding-tabs {
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+}
+
+.tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.tab.active { color: #ec4899; border-bottom-color: #ec4899; font-weight: 600; }
+
+.wedding-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.wedding-title { font-size: 1.5rem; font-weight: 700; margin: 0; }
+.invite-link { color: #ec4899; font-size: 0.85rem; text-decoration: none; }
+
+.wedding-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.info-block {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.info-block.full { grid-column: 1 / -1; }
+.info-label { font-size: 0.75rem; color: #9ca3af; }
+.info-value { font-weight: 700; font-size: 1rem; color: #111827; }
+.info-icon { font-size: 1.1rem; }
+.wedding-stats { display: flex; gap: 12px; margin-bottom: 16px; }
+
+/* ─── INVITE SECTION ─────────────────────────────────────────────────────── */
+
+.invite-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  text-align: center;
+}
+
+.invite-code-box {
+  background: #fdf2f8;
+  border: 1px solid #fbcfe8;
+  border-radius: 14px;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+.invite-label { font-size: 0.75rem; color: #9ca3af; }
+.invite-code { font-size: 2rem; letter-spacing: 0.2em; color: #ec4899; }
+
+.invite-url-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 100%;
+}
+.invite-url {
+  flex: 1;
+  font-size: 0.8rem;
+  color: #6b7280;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.invite-url-box button { padding: 6px 12px; font-size: 0.8rem; flex-shrink: 0; }
+
+.qr-wrapper {
+  padding: 16px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+}
+
+/* ─── NAV ────────────────────────────────────────────────────────────────── */
+
+.nav-signout {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #6b7280;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}

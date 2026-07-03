@@ -2,20 +2,30 @@ import { Link } from 'react-router-dom';
 import { useApp } from '../AppContext';
 
 export default function Navigation() {
-  const { guest } = useApp();
+  const { authUser, guest, event, signOut } = useApp();
 
   return (
     <nav className="main-nav">
-      <Link to="/">Accueil</Link>
       {guest ? (
         <>
-          <Link to="/guest/home">Invité</Link>
-          <Link to="/guest/upload">Upload</Link>
-          <Link to="/guest/media">Mes souvenirs</Link>
+          <Link to="/guest/home">🏠 Accueil</Link>
+          <Link to="/guest/upload">📤 Upload</Link>
+          <Link to="/guest/media">🖼 Mes souvenirs</Link>
+          <button className="nav-signout" onClick={signOut}>Déconnexion</button>
         </>
-      ) : null}
-      <Link to="/admin/dashboard">Mariés</Link>
-      <Link to="/admin/guests">Invités</Link>
+      ) : authUser ? (
+        <>
+          <Link to="/admin/wedding">💍 Mon mariage</Link>
+          <Link to="/admin/dashboard">📊 Dashboard</Link>
+          <Link to="/admin/guests">👥 Invités</Link>
+          <button className="nav-signout" onClick={signOut}>Déconnexion</button>
+        </>
+      ) : (
+        <>
+          <Link to="/">Invité</Link>
+          <Link to="/admin">Mariés</Link>
+        </>
+      )}
     </nav>
   );
 }
