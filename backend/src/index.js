@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
 const supabase = require('./supabase');
+const { generateDeviceId, createDeviceFingerprint } = require('./deviceStorage');
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(frontendPath));
 
-// ─── MAPPERS ─────────────────────────────────────────────────────────────────
+// ─── MAPPERS ──────────────────────────────────────────────────────────
 
 function mapEvent(e) {
   if (!e) return null;
@@ -57,11 +58,24 @@ function mapGuest(g) {
   };
 }
 
+function mapVisitor(v) {
+  if (!v) return null;
+  return {
+    id: v.id,
+    eventId: v.event_id,
+    deviceId: v.device_id,
+    firstName: v.first_name,
+    lastName: v.last_name,
+    createdAt: v.created_at,
+  };
+}
+
 function mapMedia(item, guest) {
   if (!item) return null;
   const mapped = {
     id: item.id,
     guestId: item.guest_id,
+    visitorId: item.visitor_id,
     eventId: item.event_id,
     type: item.type,
     fileName: item.file_name,
@@ -83,6 +97,12 @@ function mapMedia(item, guest) {
       lastName: item.guests.last_name,
       avatarUrl: item.guests.avatar_url || null,
     };
+  } else if (item.visitors) {
+    mapped.visitor = {
+      id: item.visitors.id,
+      firstName: item.visitors.first_name,
+      lastName: item.visitors.last_name,
+    };
   }
   return mapped;
 }
@@ -91,7 +111,7 @@ function generateAccessCode() {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
 }
 
-// ─── DB HELPERS ──────────────────────────────────────────────────────────────
+// ─── DB HELPERS ─────────────────────────────────────────────────────────
 
 async function getEventByCode(code) {
   const { data, error } = await supabase.from('events').select('*').eq('access_code', code).limit(1).single();
@@ -175,6 +195,36 @@ async function createGuest(eventId, fields) {
   return mapGuest(data);
 }
 
+async function createOrGetVisitor(eventId, deviceId, firstName, lastName) {
+  // Check if visitor already exists with this device ID on this event
+  const { data: existing } = await supabase
+    .from('visitors')
+    .select('*')
+    .eq('event_id', eventId)
+    .eq('device_id', deviceId)
+    .limit(1)
+    .single();
+  
+  if (existing) {
+    return { visitor: mapVisitor(existing), isNew: false };
+  }
+
+  // Create new visitor
+  const { data, error } = await supabase
+    .from('visitors')
+    .insert([{
+      event_id: eventId,
+      device_id: deviceId,
+      first_name: firstName,
+      last_name: lastName,
+    }])
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return { visitor: mapVisitor(data), isNew: true };
+}
+
 async function getOrCreateGuestByAuth(eventId, authUserId, fields) {
   // Check if guest already joined this event with this Google account
   const { data: existing } = await supabase
@@ -215,10 +265,17 @@ async function getGuestMedia(guestId) {
   return resolveMediaUrls(items);
 }
 
+async function getVisitorMedia(visitorId) {
+  const { data, error } = await supabase.from('media').select('*').eq('visitor_id', visitorId).order('created_at', { ascending: false });
+  if (error) return [];
+  const items = data.map((m) => mapMedia(m));
+  return resolveMediaUrls(items);
+}
+
 async function getEventMedia(eventId, type) {
   let query = supabase
     .from('media')
-    .select('*, guests(*)')
+    .select('*, guests(*), visitors(*)')
     .eq('event_id', eventId)
     .order('created_at', { ascending: false });
   if (type && ['photo', 'video', 'audio'].includes(type)) {
@@ -238,11 +295,28 @@ async function getAllGuests(eventId) {
   return data.map(mapGuest);
 }
 
-async function deleteMediaRecord(mediaId, guestId) {
-  const { data: existing, error: fetchError } = await supabase
-    .from('media').select('*').eq('id', mediaId).eq('guest_id', guestId).limit(1).single();
+async function deleteMediaRecord(mediaId, guestId, visitorId) {
+  let query = supabase.from('media').select('*').eq('id', mediaId);
+  
+  if (guestId) {
+    query = query.eq('guest_id', guestId);
+  } else if (visitorId) {
+    query = query.eq('visitor_id', visitorId);
+  } else {
+    return null;
+  }
+
+  const { data: existing, error: fetchError } = await query.limit(1).single();
   if (fetchError || !existing) return null;
-  const { error } = await supabase.from('media').delete().eq('id', mediaId).eq('guest_id', guestId);
+  
+  let deleteQuery = supabase.from('media').delete().eq('id', mediaId);
+  if (guestId) {
+    deleteQuery = deleteQuery.eq('guest_id', guestId);
+  } else if (visitorId) {
+    deleteQuery = deleteQuery.eq('visitor_id', visitorId);
+  }
+
+  const { error } = await deleteQuery;
   if (error) return null;
   return mapMedia(existing);
 }
@@ -253,7 +327,13 @@ async function guestHasCorrectEvent(guestId, eventId) {
   return Boolean(data);
 }
 
-// ─── ROUTES ──────────────────────────────────────────────────────────────────
+async function visitorHasCorrectEvent(visitorId, eventId) {
+  const { data, error } = await supabase.from('visitors').select('id').eq('id', visitorId).eq('event_id', eventId).limit(1).single();
+  if (error) return false;
+  return Boolean(data);
+}
+
+// ─── ROUTES ──────────────────────────────────────────────────────────
 
 // Upload cover image for event
 app.post('/upload-cover', upload.single('file'), async (req, res) => {
@@ -352,6 +432,47 @@ app.post('/guest/join', async (req, res) => {
   }
 });
 
+// ─── VISITOR ENDPOINTS (Anonymous/Device-based) ─────────────────────────────
+
+// Visitor: Join event as anonymous visitor with device tracking
+app.post('/visitor/join', async (req, res) => {
+  const { code, deviceId, firstName, lastName } = req.body;
+  if (!code || !firstName || !lastName) {
+    return res.status(400).json({ error: 'code, firstName et lastName sont requis.' });
+  }
+
+  const event = await getEventByCode(code);
+  if (!event) return res.status(404).json({ error: 'Événement introuvable.' });
+
+  try {
+    // Generate device ID if not provided
+    const finalDeviceId = deviceId || generateDeviceId();
+    const { visitor, isNew } = await createOrGetVisitor(event.id, finalDeviceId, firstName, lastName);
+    
+    return res.status(isNew ? 201 : 200).json({ 
+      visitor, 
+      event,
+      deviceId: finalDeviceId,
+    });
+  } catch (err) {
+    console.error('visitor join error', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Get visitor by ID
+app.get('/visitor/:id', async (req, res) => {
+  const { data, error } = await supabase
+    .from('visitors')
+    .select('*')
+    .eq('id', req.params.id)
+    .limit(1)
+    .single();
+  
+  if (error || !data) return res.status(404).json({ error: 'Visiteur introuvable.' });
+  return res.json({ visitor: mapVisitor(data) });
+});
+
 // Legacy join (kept for compatibility)
 app.post('/join-event', async (req, res) => {
   const { code, firstName, lastName } = req.body;
@@ -366,21 +487,30 @@ app.post('/join-event', async (req, res) => {
   }
 });
 
-// Upload media
+// Upload media (supports both guest and visitor)
 app.post('/upload', upload.single('file'), async (req, res) => {
-  const { guestId, eventId, type, description, authUserId, firstName, lastName, email, phone } = req.body;
+  const { guestId, visitorId, eventId, type, description, authUserId, firstName, lastName, email, phone } = req.body;
   if (!req.file || !eventId || !type) {
     return res.status(400).json({ error: 'Fichier, eventId et type sont requis.' });
   }
 
   let finalGuestId = guestId;
+  let finalVisitorId = visitorId;
   let valid = false;
 
+  // Check if guest ID is valid
   if (guestId) {
     valid = await guestHasCorrectEvent(guestId, eventId);
     if (valid) finalGuestId = guestId;
   }
 
+  // Check if visitor ID is valid
+  if (!valid && visitorId) {
+    valid = await visitorHasCorrectEvent(visitorId, eventId);
+    if (valid) finalVisitorId = visitorId;
+  }
+
+  // Admin upload
   if (!valid && authUserId) {
     const event = await getEventById(eventId);
     if (event && event.adminId === authUserId) {
@@ -400,9 +530,11 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     }
   }
 
-  if (!valid || !finalGuestId) return res.status(403).json({ error: 'Invité non autorisé.' });
+  if (!valid || (!finalGuestId && !finalVisitorId)) {
+    return res.status(403).json({ error: 'Invité non autorisé.' });
+  }
 
-  const storagePath = `${eventId}/${finalGuestId}/${Date.now()}-${req.file.originalname}`;
+  const storagePath = `${eventId}/${finalGuestId || finalVisitorId}/${Date.now()}-${req.file.originalname}`;
   const { error: storageError } = await supabase.storage
     .from(bucketName)
     .upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
@@ -424,7 +556,8 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     const { data, error } = await supabase
       .from('media')
       .insert([{
-        guest_id: finalGuestId,
+        guest_id: finalGuestId || null,
+        visitor_id: finalVisitorId || null,
         event_id: eventId,
         type,
         file_name: req.file.originalname,
@@ -446,10 +579,15 @@ app.get('/my-media/:guestId', async (req, res) => {
   return res.json({ media: items });
 });
 
+app.get('/visitor/:visitorId/media', async (req, res) => {
+  const items = await getVisitorMedia(req.params.visitorId);
+  return res.json({ media: items });
+});
+
 app.delete('/media/:id', async (req, res) => {
-  const { guestId } = req.body;
-  if (!guestId) return res.status(400).json({ error: 'guestId requis.' });
-  const deleted = await deleteMediaRecord(req.params.id, guestId);
+  const { guestId, visitorId } = req.body;
+  if (!guestId && !visitorId) return res.status(400).json({ error: 'guestId ou visitorId requis.' });
+  const deleted = await deleteMediaRecord(req.params.id, guestId, visitorId);
   if (!deleted) return res.status(404).json({ error: 'Média introuvable.' });
   return res.json({ removed: deleted });
 });
