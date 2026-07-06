@@ -4,9 +4,34 @@ import { supabase } from './lib/supabase';
 const API_URL = import.meta.env.VITE_API_URL || window.location.origin;
 const AppContext = createContext(null);
 
+// ─── DEVICE STORAGE ─────────────────────────────────────────────────────
+
+function getDeviceId() {
+  let deviceId = localStorage.getItem('wedding_device_id');
+  if (!deviceId) {
+    deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
+    localStorage.setItem('wedding_device_id', deviceId);
+  }
+  return deviceId;
+}
+
+function saveVisitorInfo(eventId, visitor) {
+  const key = `visitor_${eventId}`;
+  localStorage.setItem(key, JSON.stringify(visitor));
+}
+
+function getVisitorInfo(eventId) {
+  const key = `visitor_${eventId}`;
+  const data = localStorage.getItem(key);
+  return data ? JSON.parse(data) : null;
+}
+
+// ─── CONTEXT ────────────────────────────────────────────────────────────
+
 export function AppProvider({ children }) {
   const [authUser, setAuthUser] = useState(null);
   const [guest, setGuest] = useState(null);
+  const [visitor, setVisitor] = useState(null);
   const [event, setEvent] = useState(null);
   const [guestEvents, setGuestEvents] = useState([]);
   const [userProfile, setUserProfile] = useState(null);
@@ -18,7 +43,7 @@ export function AppProvider({ children }) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // ─── AUTH ──────────────────────────────────────────────────────────────────
+  // ─── AUTH ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -55,6 +80,7 @@ export function AppProvider({ children }) {
     await supabase.auth.signOut();
     setAuthUser(null);
     setGuest(null);
+    setVisitor(null);
     setEvent(null);
     setMedia([]);
     setGuestEvents([]);
@@ -67,7 +93,7 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  // ─── PROFILE ───────────────────────────────────────────────────────────────
+  // ─── PROFILE ─────────────────────────────────────────────────────────
 
   const loadUserProfile = async (authUserId) => {
     if (!authUserId) return null;
@@ -92,7 +118,7 @@ export function AppProvider({ children }) {
     return { success: true };
   };
 
-  // ─── EVENTS ────────────────────────────────────────────────────────────────
+  // ─── EVENTS ──────────────────────────────────────────────────────────
 
   const loadAdminWedding = async (adminId) => {
     const res = await fetch(`${API_URL}/event/host/${adminId}`);
@@ -107,6 +133,20 @@ export function AppProvider({ children }) {
     const data = await res.json();
     if (data.event) setEvent(data.event);
     return data.event || null;
+  };
+
+  const loadEventByCode = async (code) => {
+    try {
+      const res = await fetch(`${API_URL}/event/${code}`);
+      const data = await res.json();
+      if (data.event) {
+        setEvent(data.event);
+        return data.event;
+      }
+    } catch (err) {
+      console.error('load event by code error', err);
+    }
+    return null;
   };
 
   const loadEventStats = async (eventId) => {
@@ -141,7 +181,7 @@ export function AppProvider({ children }) {
     return { success: true, event: data.event };
   };
 
-  // ─── GUEST EVENTS ──────────────────────────────────────────────────────────
+  // ─── GUEST EVENTS ───────────────────────────────────────────────────────
 
   const loadGuestEvents = async (authUserId) => {
     if (!authUserId) return [];
@@ -171,7 +211,34 @@ export function AppProvider({ children }) {
     return { success: true, guest: data.guest, event: data.event };
   };
 
-  // ─── MEDIA ─────────────────────────────────────────────────────────────────
+  // ─── VISITOR (ANONYMOUS) ──────────────────────────────────────────────
+
+  const joinEventAsVisitor = async ({ code, firstName, lastName }) => {
+    const deviceId = getDeviceId();
+    const res = await fetch(`${API_URL}/visitor/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, deviceId, firstName, lastName }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }
+    
+    setVisitor(data.visitor);
+    setEvent(data.event);
+    saveVisitorInfo(data.event.id, data.visitor);
+    
+    const mediaRes = await fetch(`${API_URL}/visitor/${data.visitor.id}/media`);
+    const mediaData = await mediaRes.json();
+    setMedia(mediaData.media || []);
+    
+    return { success: true, visitor: data.visitor, event: data.event };
+  };
+
+  const getStoredVisitor = (eventId) => {
+    return getVisitorInfo(eventId);
+  };
+
+  // ─── MEDIA ──────────────────────────────────────────────────────────
 
   const loadMyMedia = async (guestId) => {
     if (!guestId) return;
@@ -180,37 +247,69 @@ export function AppProvider({ children }) {
     setMedia(data.media || []);
   };
 
+  const loadVisitorMedia = async (visitorId) => {
+    if (!visitorId) return;
+    const res = await fetch(`${API_URL}/visitor/${visitorId}/media`);
+    const data = await res.json();
+    setMedia(data.media || []);
+  };
+
   const uploadMedia = async ({ file, type: mediaType, description }) => {
-    if (!guest || !file) return { success: false, error: 'Missing guest or file' };
+    if (!guest && !visitor || !file) return { success: false, error: 'Missing guest/visitor or file' };
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('guestId', guest.id);
-    formData.append('eventId', guest.eventId);
+    
+    if (guest) {
+      formData.append('guestId', guest.id);
+      formData.append('eventId', guest.eventId);
+    } else if (visitor) {
+      formData.append('visitorId', visitor.id);
+      formData.append('eventId', visitor.eventId);
+    }
+    
     formData.append('type', mediaType);
     if (description) formData.append('description', description);
+    
     const res = await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false, error: data.error }; }
     setMessage(`${mediaType} envoyé avec succès`);
-    await loadMyMedia(guest.id);
+    
+    if (guest) {
+      await loadMyMedia(guest.id);
+    } else if (visitor) {
+      await loadVisitorMedia(visitor.id);
+    }
+    
     return { success: true, media: data.media };
   };
 
   const deleteMedia = async (mediaId) => {
-    if (!guest) return { success: false };
+    if (!guest && !visitor) return { success: false };
+    
+    const body = {};
+    if (guest) body.guestId = guest.id;
+    if (visitor) body.visitorId = visitor.id;
+    
     const res = await fetch(`${API_URL}/media/${mediaId}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ guestId: guest.id }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     if (!res.ok) { setMessage(data.error); return { success: false }; }
     setMessage('Contenu supprimé');
-    await loadMyMedia(guest.id);
+    
+    if (guest) {
+      await loadMyMedia(guest.id);
+    } else if (visitor) {
+      await loadVisitorMedia(visitor.id);
+    }
+    
     return { success: true };
   };
 
-  // ─── GUESTS ────────────────────────────────────────────────────────────────
+  // ─── GUESTS ─────────────────────────────────────────────────────────
 
   const loadGuests = async (eventId) => {
     const url = eventId ? `${API_URL}/guests?eventId=${eventId}` : `${API_URL}/guests`;
@@ -239,14 +338,15 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      authUser, guest, setGuest, event, setEvent,
+      authUser, guest, setGuest, visitor, setVisitor, event, setEvent,
       guestEvents, userProfile, media, guests, selectedGuestMedia,
       eventStats, eventMedia, message, setMessage, loading,
       signUp, signIn, signOut, updatePassword,
       loadUserProfile, updateUserProfile,
-      loadAdminWedding, loadEventById, loadEventStats, createWedding, updateWedding,
+      loadAdminWedding, loadEventById, loadEventByCode, loadEventStats, createWedding, updateWedding,
       loadGuestEvents, joinEvent,
-      loadMyMedia, uploadMedia, deleteMedia,
+      joinEventAsVisitor, getStoredVisitor,
+      loadMyMedia, loadVisitorMedia, uploadMedia, deleteMedia,
       loadGuests, loadGuestMedia, loadEventMedia,
     }}>
       {children}
